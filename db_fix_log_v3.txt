@@ -1,0 +1,24 @@
+Connecting to database...
+
+Checking indexes for table: BillingDetail
+Indexes on BillingDetail: [{"Table":"billingdetail","Non_unique":"0","Key_name":"PRIMARY","Seq_in_index":"1","Column_name":"id","Collation":"A","Cardinality":"0","Sub_part":null,"Packed":null,"Null":"","Index_type":"BTREE","Comment":"","Index_comment":""},{"Table":"billingdetail","Non_unique":"0","Key_name":"BillingDetail_userId_key","Seq_in_index":"1","Column_name":"userId","Collation":"A","Cardinality":"0","Sub_part":null,"Packed":null,"Null":"","Index_type":"BTREE","Comment":"","Index_comment":""}]
+
+FOUND UNIQUE INDEX: BillingDetail_userId_key
+Attempting to DROP index: BillingDetail_userId_key on table BillingDetail...
+Failed to drop index BillingDetail_userId_key: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `1553`. Message: `Cannot drop index 'BillingDetail_userId_key': needed in a foreign key constraint`
+
+Checking indexes for table: billingdetail
+Indexes on billingdetail: [{"Table":"billingdetail","Non_unique":"0","Key_name":"PRIMARY","Seq_in_index":"1","Column_name":"id","Collation":"A","Cardinality":"0","Sub_part":null,"Packed":null,"Null":"","Index_type":"BTREE","Comment":"","Index_comment":""},{"Table":"billingdetail","Non_unique":"0","Key_name":"BillingDetail_userId_key","Seq_in_index":"1","Column_name":"userId","Collation":"A","Cardinality":"0","Sub_part":null,"Packed":null,"Null":"","Index_type":"BTREE","Comment":"","Index_comment":""}]
+
+FOUND UNIQUE INDEX: BillingDetail_userId_key
+Attempting to DROP index: BillingDetail_userId_key on table billingdetail...
+Failed to drop index BillingDetail_userId_key: 
+Invalid `prisma.$queryRawUnsafe()` invocation:
+
+
+Raw query failed. Code: `1553`. Message: `Cannot drop index 'BillingDetail_userId_key': needed in a foreign key constraint`
+Done.

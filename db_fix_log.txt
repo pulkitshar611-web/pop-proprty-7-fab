@@ -1,0 +1,11 @@
+Connecting to database...
+
+Checking indexes for table: BillingDetail
+Error checking table BillingDetail: Do not know how to serialize a BigInt
+
+Checking indexes for table: billingdetail
+Error checking table billingdetail: Do not know how to serialize a BigInt
+
+Checking indexes for table: billingDetail
+Error checking table billingDetail: Do not know how to serialize a BigInt
+Done.
