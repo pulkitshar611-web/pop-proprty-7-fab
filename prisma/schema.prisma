@@ -13,7 +13,7 @@ model accounts {
   assetType      String
   openingBalance Decimal  @default(0.00) @db.Decimal(10, 2)
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
 }
 
 model billingdetail {
@@ -27,7 +27,7 @@ model billingdetail {
   method    String?
   details   String?
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   user      user     @relation(fields: [userId], references: [id], map: "BillingDetail_userId_fkey")
 
   @@index([userId], map: "BillingDetail_userId_fkey")
@@ -41,7 +41,7 @@ model communication {
   message   String
   status    String   @default("Sent")
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model document {
@@ -52,7 +52,7 @@ model document {
   expiryDate DateTime?
   fileUrl    String?
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime  @updatedAt
   user       user      @relation(fields: [userId], references: [id], map: "Document_userId_fkey")
 
   @@index([userId], map: "Document_userId_fkey")
@@ -67,7 +67,7 @@ model insurance {
   endDate      DateTime
   documentUrl  String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime
+  updatedAt    DateTime @updatedAt
   user         user     @relation(fields: [userId], references: [id], map: "Insurance_userId_fkey")
 
   @@index([userId], map: "Insurance_userId_fkey")
@@ -81,7 +81,7 @@ model invitation {
   status    String          @default("Pending")
   invitedBy Int
   createdAt DateTime        @default(now())
-  updatedAt DateTime
+  updatedAt DateTime        @updatedAt
   user      user            @relation(fields: [invitedBy], references: [id], map: "Invitation_invitedBy_fkey")
 
   @@index([invitedBy], map: "Invitation_invitedBy_fkey")
@@ -99,7 +99,7 @@ model invoice {
   status         String        @default("draft")
   paidAt         DateTime?
   createdAt      DateTime      @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime      @updatedAt
   dueDate        DateTime?
   paymentMethod  String?
   idempotencyKey String?       @unique(map: "Invoice_idempotencyKey_key")
@@ -121,7 +121,7 @@ model lease {
   status          String    @default("Active")
   monthlyRent     Decimal?
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime  @updatedAt
   securityDeposit Decimal?
   bedroom         String?
   serviceFees     Decimal?
@@ -143,7 +143,7 @@ model maintenancetask {
   status     String    @default("Upcoming")
   notes      String?
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime  @updatedAt
   property   property? @relation(fields: [propertyId], references: [id], map: "MaintenanceTask_propertyId_fkey")
 
   @@index([propertyId], map: "MaintenanceTask_propertyId_fkey")
@@ -156,7 +156,7 @@ model message {
   receiverId                    Int
   isRead                        Boolean  @default(false)
   createdAt                     DateTime @default(now())
-  updatedAt                     DateTime
+  updatedAt                     DateTime @updatedAt
   user_message_receiverIdTouser user     @relation("message_receiverIdTouser", fields: [receiverId], references: [id], map: "Message_receiverId_fkey")
   user_message_senderIdTouser   user     @relation("message_senderIdTouser", fields: [senderId], references: [id], map: "Message_senderId_fkey")
 
@@ -175,7 +175,7 @@ model paymentmethod {
   expiryDate String?
   isDefault  Boolean  @default(false)
   createdAt  DateTime @default(now())
-  updatedAt  DateTime
+  updatedAt  DateTime @updatedAt
   user       user     @relation(fields: [userId], references: [id], map: "PaymentMethod_userId_fkey")
 
   @@index([userId], map: "PaymentMethod_userId_fkey")
@@ -188,7 +188,7 @@ model property {
   status          String            @default("Active")
   ownerId         Int?
   createdAt       DateTime          @default(now())
-  updatedAt       DateTime
+  updatedAt       DateTime          @updatedAt
   maintenancetask maintenancetask[]
   owner           user?             @relation(fields: [ownerId], references: [id], map: "Property_ownerId_fkey")
   units           unit[]
@@ -219,7 +219,7 @@ model refundadjustment {
   date      DateTime
   status    String   @default("Pending")
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
   tenant    user     @relation(fields: [tenantId], references: [id], map: "RefundAdjustment_tenantId_fkey")
   unit      unit     @relation(fields: [unitId], references: [id], map: "RefundAdjustment_unitId_fkey")
 
@@ -232,7 +232,7 @@ model systemsetting {
   key       String   @unique(map: "SystemSetting_key_key")
   value     String
   createdAt DateTime @default(now())
-  updatedAt DateTime
+  updatedAt DateTime @updatedAt
 }
 
 model taxes {
@@ -242,7 +242,7 @@ model taxes {
   appliesTo String       @default("Rent") @db.VarChar(50)
   status    taxes_status @default(active)
   createdAt DateTime     @default(now())
-  updatedAt DateTime
+  updatedAt DateTime     @updatedAt
 }
 
 model ticket {
@@ -254,7 +254,7 @@ model ticket {
   status         String   @default("Open")
   attachmentUrls String?
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   propertyId     Int?
   unitId         Int?
   user           user     @relation(fields: [userId], references: [id], map: "Ticket_userId_fkey")
@@ -275,7 +275,7 @@ model transaction {
   balance        Decimal  @default(0.000000000000000000000000000000)
   status         String?  @default("Completed")
   createdAt      DateTime @default(now())
-  updatedAt      DateTime
+  updatedAt      DateTime @updatedAt
   idempotencyKey String?  @unique(map: "Transaction_idempotencyKey_key")
   invoiceId      Int?
   ownerId        Int?
@@ -295,7 +295,7 @@ model unit {
   bedrooms          Int                @default(1)
   rentAmount        Decimal            @default(0.000000000000000000000000000000)
   createdAt         DateTime           @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime           @updatedAt
   invoices          invoice[]
   leases            lease[]
   refundadjustments refundadjustment[]
@@ -314,7 +314,7 @@ model user {
   phone                            String?
   type                             String?            @default("Individual")
   createdAt                        DateTime           @default(now())
-  updatedAt                        DateTime
+  updatedAt                        DateTime           @updatedAt
   billingdetails                    billingdetail[]
   documents                         document[]
   insurances                        insurance[]
@@ -336,7 +336,7 @@ model wallet {
   userId            Int                 @unique(map: "Wallet_userId_key")
   balance           Decimal             @default(0.00) @db.Decimal(10, 2)
   createdAt         DateTime            @default(now())
-  updatedAt         DateTime
+  updatedAt         DateTime            @updatedAt
   user              user                @relation(fields: [userId], references: [id], map: "Wallet_userId_fkey")
   wallettransactions wallettransaction[]
 }
