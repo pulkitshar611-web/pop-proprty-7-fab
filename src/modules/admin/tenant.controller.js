@@ -222,9 +222,9 @@ exports.deleteTenant = async (req, res) => {
             await prisma.insurance.deleteMany({ where: { userId: id } });
             await prisma.document.deleteMany({ where: { userId: id } });
             await prisma.ticket.deleteMany({ where: { userId: id } });
-            await prisma.refreshToken.deleteMany({ where: { userId: id } });
+            await prisma.refreshtoken.deleteMany({ where: { userId: id } });
             await prisma.invoice.deleteMany({ where: { tenantId: id } }); // Fix for FK constraint
-            await prisma.refundAdjustment.deleteMany({ where: { tenantId: id } }); // Fix for FK constraint
+            await prisma.refundadjustment.deleteMany({ where: { tenantId: id } }); // Fix for FK constraint
             await prisma.message.deleteMany({
                 where: {
                     OR: [

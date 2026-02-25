@@ -10,7 +10,7 @@ exports.getPaymentConfig = async (req, res) => {
         // For now, we provide the requested defaults while keeping them configurable here.
 
         // Fetch from DB if exists, otherwise use defaults
-        const settings = await prisma.systemSetting.findMany({
+        const settings = await prisma.systemsetting.findMany({
             where: {
                 key: {
                     in: ['platform_fee', 'currency']

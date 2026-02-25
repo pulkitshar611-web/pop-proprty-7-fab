@@ -4,7 +4,7 @@ const prisma = require('../../config/prisma');
 exports.getPaymentMethods = async (req, res) => {
     try {
         const userId = req.user.id;
-        const methods = await prisma.paymentMethod.findMany({
+        const methods = await prisma.paymentmethod.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });
@@ -26,10 +26,10 @@ exports.addPaymentMethod = async (req, res) => {
         }
 
         // If this is the first method, make it default
-        const count = await prisma.paymentMethod.count({ where: { userId } });
+        const count = await prisma.paymentmethod.count({ where: { userId } });
         const isDefault = count === 0;
 
-        const newMethod = await prisma.paymentMethod.create({
+        const newMethod = await prisma.paymentmethod.create({
             data: {
                 userId,
                 type,
@@ -42,7 +42,7 @@ exports.addPaymentMethod = async (req, res) => {
             }
         });
 
-        const methods = await prisma.paymentMethod.findMany({
+        const methods = await prisma.paymentmethod.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });
@@ -61,7 +61,7 @@ exports.setDefaultPaymentMethod = async (req, res) => {
         const { id } = req.params;
 
         // Verify ownership
-        const method = await prisma.paymentMethod.findFirst({
+        const method = await prisma.paymentmethod.findFirst({
             where: { id: parseInt(id), userId }
         });
 
@@ -71,17 +71,17 @@ exports.setDefaultPaymentMethod = async (req, res) => {
 
         // Transaction to update defaults
         await prisma.$transaction([
-            prisma.paymentMethod.updateMany({
+            prisma.paymentmethod.updateMany({
                 where: { userId },
                 data: { isDefault: false }
             }),
-            prisma.paymentMethod.update({
+            prisma.paymentmethod.update({
                 where: { id: parseInt(id) },
                 data: { isDefault: true }
             })
         ]);
 
-        const methods = await prisma.paymentMethod.findMany({
+        const methods = await prisma.paymentmethod.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });
@@ -100,7 +100,7 @@ exports.deletePaymentMethod = async (req, res) => {
         const { id } = req.params;
 
         // Verify ownership
-        const method = await prisma.paymentMethod.findFirst({
+        const method = await prisma.paymentmethod.findFirst({
             where: { id: parseInt(id), userId }
         });
 
@@ -108,11 +108,11 @@ exports.deletePaymentMethod = async (req, res) => {
             return res.status(404).json({ message: 'Payment method not found' });
         }
 
-        await prisma.paymentMethod.delete({
+        await prisma.paymentmethod.delete({
             where: { id: parseInt(id) }
         });
 
-        const methods = await prisma.paymentMethod.findMany({
+        const methods = await prisma.paymentmethod.findMany({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });

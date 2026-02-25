@@ -3,7 +3,7 @@ const prisma = require('../../config/prisma');
 // GET /api/admin/refunds
 exports.getRefunds = async (req, res) => {
     try {
-        const refunds = await prisma.refundAdjustment.findMany({
+        const refunds = await prisma.refundadjustment.findMany({
             include: {
                 tenant: true,
                 unit: true
@@ -38,10 +38,10 @@ exports.createRefund = async (req, res) => {
     try {
         const { type, reason, tenantId, unitId, amount, status, date } = req.body;
 
-        const count = await prisma.refundAdjustment.count();
+        const count = await prisma.refundadjustment.count();
         const requestId = `RA-${String(count + 1).padStart(3, '0')}`;
 
-        const newRefund = await prisma.refundAdjustment.create({
+        const newRefund = await prisma.refundadjustment.create({
             data: {
                 requestId,
                 type,

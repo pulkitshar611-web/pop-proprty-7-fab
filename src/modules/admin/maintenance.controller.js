@@ -9,7 +9,7 @@ exports.getTasks = async (req, res) => {
             whereClause.propertyId = parseInt(propertyId);
         }
 
-        const tasks = await prisma.maintenanceTask.findMany({
+        const tasks = await prisma.maintenancetask.findMany({
             where: whereClause,
             include: { property: true },
             orderBy: { dueDate: 'asc' }
@@ -41,7 +41,7 @@ exports.createTask = async (req, res) => {
     try {
         const { name, buildingId, type, frequency, dueDate, vendor, notes } = req.body;
 
-        const newTask = await prisma.maintenanceTask.create({
+        const newTask = await prisma.maintenancetask.create({
             data: {
                 name,
                 propertyId: buildingId ? parseInt(buildingId) : null,
@@ -72,7 +72,7 @@ exports.updateTask = async (req, res) => {
         if (name) data.name = name;
         if (notes) data.notes = notes;
 
-        const updated = await prisma.maintenanceTask.update({
+        const updated = await prisma.maintenancetask.update({
             where: { id: parseInt(id) },
             data
         });

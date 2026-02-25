@@ -56,8 +56,8 @@ exports.getReports = async (req, res) => {
 
         // Payment Success Rate (From WalletTransactions or inferred from Invoices)
         // Let's use WalletTransactions if available for specific success/failure rates
-        const totalTransactions = await prisma.walletTransaction.count();
-        const failedTransactions = await prisma.walletTransaction.count({ where: { status: 'FAILED' } });
+        const totalTransactions = await prisma.wallettransaction.count();
+        const failedTransactions = await prisma.wallettransaction.count({ where: { status: 'FAILED' } });
         const successRate = totalTransactions > 0 ? Math.round(((totalTransactions - failedTransactions) / totalTransactions) * 100) : 100;
         const failedRate = 100 - successRate; // Simplified
 

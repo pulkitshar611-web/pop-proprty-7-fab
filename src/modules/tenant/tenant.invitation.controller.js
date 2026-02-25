@@ -149,8 +149,8 @@ exports.respondToInvitation = async (req, res) => {
 exports.getInvitationPageData = async (req, res) => {
     try {
         // Fetch specific system settings or default
-        const titleSetting = await prisma.systemSetting.findUnique({ where: { key: 'INVITE_SECTION_TITLE' } });
-        const descSetting = await prisma.systemSetting.findUnique({ where: { key: 'INVITE_SECTION_DESC' } });
+        const titleSetting = await prisma.systemsetting.findUnique({ where: { key: 'INVITE_SECTION_TITLE' } });
+        const descSetting = await prisma.systemsetting.findUnique({ where: { key: 'INVITE_SECTION_DESC' } });
 
         res.json({
             title: titleSetting ? titleSetting.value : '',

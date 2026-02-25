@@ -216,7 +216,7 @@ exports.saveBillingDetails = async (req, res) => {
         }
 
         // Always create a new record to preserve history
-        const billing = await prisma.billingDetail.create({
+        const billing = await prisma.billingdetail.create({
             data: {
                 userId,
                 fullName,
@@ -248,7 +248,7 @@ exports.getBillingDetails = async (req, res) => {
         const userId = parseInt(req.user.id, 10);
 
         // Fetch the most recent billing detail
-        const billing = await prisma.billingDetail.findFirst({
+        const billing = await prisma.billingdetail.findFirst({
             where: { userId },
             orderBy: { createdAt: 'desc' }
         });
@@ -329,7 +329,7 @@ exports.getNotifications = async (req, res) => {
         });
 
         // 2. Payment Success Notifications (From Wallet Transactions)
-        const recentTransactions = await prisma.walletTransaction.findMany({
+        const recentTransactions = await prisma.wallettransaction.findMany({
             where: {
                 wallet: { userId },
                 type: 'RENT_PAYMENT',

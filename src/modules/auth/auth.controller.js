@@ -26,7 +26,7 @@ exports.login = async (req, res) => {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7);
 
-        await prisma.refreshToken.create({
+        await prisma.refreshtoken.create({
             data: {
                 token: refreshToken,
                 userId: user.id,
@@ -126,7 +126,7 @@ exports.register = async (req, res) => {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7);
 
-        await prisma.refreshToken.create({
+        await prisma.refreshtoken.create({
             data: {
                 token: refreshToken,
                 userId: user.id,

@@ -542,17 +542,17 @@ exports.deleteOwner = async (req, res) => {
         // Wallet & Transactions
         const userWallet = await prisma.wallet.findUnique({ where: { userId } });
         if (userWallet) {
-            await prisma.walletTransaction.deleteMany({ where: { walletId: userWallet.id } });
+            await prisma.wallettransaction.deleteMany({ where: { walletId: userWallet.id } });
             await prisma.wallet.delete({ where: { id: userWallet.id } });
         }
 
         // Other direct relations
-        await prisma.billingDetail.deleteMany({ where: { userId } });
-        await prisma.paymentMethod.deleteMany({ where: { userId } });
+        await prisma.billingdetail.deleteMany({ where: { userId } });
+        await prisma.paymentmethod.deleteMany({ where: { userId } });
         await prisma.document.deleteMany({ where: { userId } });
         await prisma.insurance.deleteMany({ where: { userId } });
         await prisma.ticket.deleteMany({ where: { userId } });
-        await prisma.refreshToken.deleteMany({ where: { userId } });
+        await prisma.refreshtoken.deleteMany({ where: { userId } });
 
         // 2. Disconnect properties
         await prisma.property.updateMany({

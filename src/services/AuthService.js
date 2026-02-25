@@ -11,7 +11,7 @@ class AuthService {
         if (!token) throw new Error('Refresh token required');
 
         // 1. Verify token in DB
-        const storedToken = await prisma.refreshToken.findUnique({
+        const storedToken = await prisma.refreshtoken.findUnique({
             where: { token },
             include: { user: true }
         });
@@ -24,12 +24,12 @@ class AuthService {
         const tokens = generateTokens(storedToken.user);
 
         // 3. Update DB (Rotate refresh token)
-        await prisma.refreshToken.delete({ where: { id: storedToken.id } });
+        await prisma.refreshtoken.delete({ where: { id: storedToken.id } });
 
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + 7);
 
-        await prisma.refreshToken.create({
+        await prisma.refreshtoken.create({
             data: {
                 token: tokens.refreshToken,
                 userId: storedToken.userId,
@@ -42,7 +42,7 @@ class AuthService {
 
     async logout(token) {
         if (!token) return;
-        await prisma.refreshToken.deleteMany({
+        await prisma.refreshtoken.deleteMany({
             where: { token }
         });
     }

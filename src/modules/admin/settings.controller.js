@@ -3,7 +3,7 @@ const prisma = require('../../config/prisma');
 // GET /api/admin/settings
 exports.getSettings = async (req, res) => {
     try {
-        const settings = await prisma.systemSetting.findMany();
+        const settings = await prisma.systemsetting.findMany();
         const settingsMap = {};
         settings.forEach(s => {
             settingsMap[s.key] = s.value; // Values are strings
@@ -36,7 +36,7 @@ exports.updateSettings = async (req, res) => {
             let val = updates[key];
             if (typeof val !== 'string') val = JSON.stringify(val); // Ensure string storage
 
-            return prisma.systemSetting.upsert({
+            return prisma.systemsetting.upsert({
                 where: { key: key },
                 update: { value: val },
                 create: { key: key, value: val }
