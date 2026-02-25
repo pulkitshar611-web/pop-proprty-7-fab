@@ -192,6 +192,7 @@ model property {
   maintenancetask maintenancetask[]
   owner           user?             @relation(fields: [ownerId], references: [id], map: "Property_ownerId_fkey")
   units           unit[]
+  tickets         ticket[]          @relation("ticket_propertyIdToproperty")
 
   @@index([ownerId], map: "Property_ownerId_fkey")
 }
@@ -257,8 +258,12 @@ model ticket {
   propertyId     Int?
   unitId         Int?
   user           user     @relation(fields: [userId], references: [id], map: "Ticket_userId_fkey")
+  unit           unit?    @relation("ticket_unitIdTounit", fields: [unitId], references: [id], map: "Ticket_unitId_fkey")
+  property       property? @relation("ticket_propertyIdToproperty", fields: [propertyId], references: [id], map: "Ticket_propertyId_fkey")
 
   @@index([userId], map: "Ticket_userId_fkey")
+  @@index([unitId], map: "Ticket_unitId_fkey")
+  @@index([propertyId], map: "Ticket_propertyId_fkey")
 }
 
 model transaction {
