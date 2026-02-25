@@ -104,7 +104,7 @@ model invoice {
   paymentMethod  String?
   idempotencyKey String?       @unique(map: "Invoice_idempotencyKey_key")
   totalPaid      Decimal       @default(0.000000000000000000000000000000)
-  user           user          @relation(fields: [tenantId], references: [id], map: "Invoice_tenantId_fkey")
+  tenant         user          @relation(fields: [tenantId], references: [id], map: "Invoice_tenantId_fkey")
   unit           unit          @relation(fields: [unitId], references: [id], map: "Invoice_unitId_fkey")
   transaction    transaction[]
 
@@ -125,7 +125,7 @@ model lease {
   securityDeposit Decimal?
   bedroom         String?
   serviceFees     Decimal?
-  user            user      @relation(fields: [tenantId], references: [id], map: "Lease_tenantId_fkey")
+  tenant          user      @relation(fields: [tenantId], references: [id], map: "Lease_tenantId_fkey")
   unit            unit      @relation(fields: [unitId], references: [id], map: "Lease_unitId_fkey")
 
   @@index([tenantId], map: "Lease_tenantId_fkey")
@@ -190,8 +190,8 @@ model property {
   createdAt       DateTime          @default(now())
   updatedAt       DateTime
   maintenancetask maintenancetask[]
-  user            user?             @relation(fields: [ownerId], references: [id], map: "Property_ownerId_fkey")
-  unit            unit[]
+  owner           user?             @relation(fields: [ownerId], references: [id], map: "Property_ownerId_fkey")
+  units           unit[]
 
   @@index([ownerId], map: "Property_ownerId_fkey")
 }
@@ -219,7 +219,7 @@ model refundadjustment {
   status    String   @default("Pending")
   createdAt DateTime @default(now())
   updatedAt DateTime
-  user      user     @relation(fields: [tenantId], references: [id], map: "RefundAdjustment_tenantId_fkey")
+  tenant    user     @relation(fields: [tenantId], references: [id], map: "RefundAdjustment_tenantId_fkey")
   unit      unit     @relation(fields: [unitId], references: [id], map: "RefundAdjustment_unitId_fkey")
 
   @@index([tenantId], map: "RefundAdjustment_tenantId_fkey")
@@ -281,20 +281,21 @@ model transaction {
 }
 
 model unit {
-  id               Int                @id @default(autoincrement())
-  name             String
-  propertyId       Int
-  status           String             @default("Vacant")
-  bedrooms         Int                @default(1)
-  rentAmount       Decimal            @default(0.000000000000000000000000000000)
-  createdAt        DateTime           @default(now())
-  updatedAt        DateTime
-  rentalMode       unit_rentalMode    @default(FULL_UNIT)
-  floor            String?            @default("G")
-  invoice          invoice[]
-  lease            lease[]
-  refundadjustment refundadjustment[]
-  property         property           @relation(fields: [propertyId], references: [id], map: "Unit_propertyId_fkey")
+  id                Int                @id @default(autoincrement())
+  propertyId        Int
+  name              String
+  floor             String?            @default("G")
+  status            String             @default("Vacant")
+  rentalMode        unit_rentalMode    @default(FULL_UNIT)
+  bedrooms          Int                @default(1)
+  rentAmount        Decimal            @default(0.000000000000000000000000000000)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime
+  invoices          invoice[]
+  leases            lease[]
+  refundadjustments refundadjustment[]
+  tickets           ticket[]           @relation("ticket_unitIdTounit")
+  property          property           @relation(fields: [propertyId], references: [id], map: "Unit_propertyId_fkey")
 
   @@index([propertyId], map: "Unit_propertyId_fkey")
 }
@@ -309,19 +310,19 @@ model user {
   type                             String?            @default("Individual")
   createdAt                        DateTime           @default(now())
   updatedAt                        DateTime
-  billingdetail                    billingdetail[]
-  document                         document[]
-  insurance                        insurance[]
-  invitation                       invitation[]
-  invoice                          invoice[]
-  lease                            lease[]
+  billingdetails                    billingdetail[]
+  documents                         document[]
+  insurances                        insurance[]
+  invitations                       invitation[]
+  invoices                         invoice[]
+  leases                           lease[]
   message_message_receiverIdTouser message[]          @relation("message_receiverIdTouser")
   message_message_senderIdTouser   message[]          @relation("message_senderIdTouser")
-  paymentmethod                    paymentmethod[]
-  property                         property[]
-  refreshtoken                     refreshtoken[]
-  refundadjustment                 refundadjustment[]
-  ticket                           ticket[]
+  paymentmethods                    paymentmethod[]
+  properties                       property[]
+  refreshtokens                     refreshtoken[]
+  refundadjustments                 refundadjustment[]
+  tickets                          ticket[]
   wallet                           wallet?
 }
 
@@ -332,7 +333,7 @@ model wallet {
   createdAt         DateTime            @default(now())
   updatedAt         DateTime
   user              user                @relation(fields: [userId], references: [id], map: "Wallet_userId_fkey")
-  wallettransaction wallettransaction[]
+  wallettransactions wallettransaction[]
 }
 
 model wallettransaction {
