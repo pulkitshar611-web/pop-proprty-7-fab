@@ -7,341 +7,365 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role {
-  ADMIN
-  OWNER
-  TENANT
+model accounts {
+  id             Int      @id @default(autoincrement())
+  accountName    String
+  assetType      String
+  openingBalance Decimal  @default(0.00) @db.Decimal(10, 2)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
 }
 
-model Invitation {
-  id        Int      @id @default(autoincrement())
-  email     String
-  role      Role
-  token     String   @unique
-  status    String   @default("Pending") // Pending, Accepted, Expired
-  invitedBy Int
-  inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id])
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model User {
-  id       Int     @id @default(autoincrement())
-  email    String  @unique
-  password String
-  name     String?
-  role     Role    @default(TENANT)
-  phone    String?
-  type     String? @default("Individual")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  refreshTokens RefreshToken[]
-  leases        Lease[]        @relation("TenantLeases")
-  documents     Document[]
-  insurances    Insurance[]
-  tickets       Ticket[]
-  invoices      Invoice[]
-
-  properties Property[] @relation("OwnerProperties")
-
-  sentMessages      Message[]          @relation("SentMessages")
-  receivedMessages  Message[]          @relation("ReceivedMessages")
-  refundAdjustments RefundAdjustment[]
-  invitationsSent   Invitation[]       @relation("InvitedBy")
-  billingDetails    BillingDetail[]
-  wallet            Wallet?
-  paymentMethods    PaymentMethod[]
-}
-
-model PaymentMethod {
+model billingdetail {
   id        Int      @id @default(autoincrement())
   userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  type      String   // DEBIT_CARD, CREDIT_CARD, BANK
-  label     String   // e.g. "Visa **** 4242"
-  last4     String?
-  bankName  String?
-  cardHolder String?
-  expiryDate String?
-  isDefault Boolean  @default(false)
-  
+  fullName  String
+  address   String
+  city      String
+  state     String
+  country   String
+  method    String?
+  details   String?
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
+  user      user     @relation(fields: [userId], references: [id], map: "BillingDetail_userId_fkey")
+
+  @@index([userId], map: "BillingDetail_userId_fkey")
 }
 
-model Wallet {
+model communication {
   id        Int      @id @default(autoincrement())
-  userId    Int      @unique
-  user      User     @relation(fields: [userId], references: [id])
-  balance   Decimal  @default(0.00) @db.Decimal(10, 2)
+  type      String
+  recipient String
+  subject   String?
+  message   String
+  status    String   @default("Sent")
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  transactions WalletTransaction[]
+  updatedAt DateTime
 }
 
-model WalletTransaction {
-  id        Int      @id @default(autoincrement())
-  walletId  Int
-  wallet    Wallet   @relation(fields: [walletId], references: [id])
-  type      String   // ADD_FUNDS, WITHDRAW
-  amount    Decimal  @db.Decimal(10, 2)
-  method    String   // DEBIT_CARD, CREDIT_CARD, BANK
-  status    String   @default("SUCCESS")
-  createdAt DateTime @default(now())
+model document {
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  name       String
+  type       String
+  expiryDate DateTime?
+  fileUrl    String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  user       user      @relation(fields: [userId], references: [id], map: "Document_userId_fkey")
+
+  @@index([userId], map: "Document_userId_fkey")
 }
 
-model RefreshToken {
-  id        Int      @id @default(autoincrement())
-  token     String   @unique
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-}
-
-model Property {
-  id               Int               @id @default(autoincrement())
-  name             String
-  address          String
-  status           String            @default("Active")
-  ownerId          Int?
-  owner            User?             @relation("OwnerProperties", fields: [ownerId], references: [id])
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
-  units            Unit[]
-  maintenanceTasks MaintenanceTask[]
-}
-
-enum RentalMode {
-  FULL_UNIT
-  BEDROOM_WISE
-}
-
-model Unit {
-  id                Int                @id @default(autoincrement())
-  name              String
-  propertyId        Int
-  property          Property           @relation(fields: [propertyId], references: [id])
-  status            String             @default("Vacant")
-  rentalMode        RentalMode         @default(FULL_UNIT)
-  bedrooms          Int                @default(1)
-  floor             String?            @default("G")
-  rentAmount        Decimal            @default(0.0)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  leases            Lease[]
-  invoices          Invoice[]
-  refundAdjustments RefundAdjustment[]
-}
-
-model Lease {
-  id          Int       @id @default(autoincrement())
-  unitId      Int
-  unit        Unit      @relation(fields: [unitId], references: [id])
-  tenantId    Int
-  tenant      User      @relation("TenantLeases", fields: [tenantId], references: [id])
-  bedroom     String? // Added for Bedroom-wise rentals
-  startDate   DateTime?
-  endDate     DateTime?
-  status      String    @default("Active")
-  monthlyRent Decimal?
-  serviceFees Decimal?
-
-  securityDeposit Decimal?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-}
-
-model Insurance {
+model insurance {
   id           Int      @id @default(autoincrement())
   userId       Int
-  user         User     @relation(fields: [userId], references: [id])
   provider     String
   policyNumber String
   startDate    DateTime
   endDate      DateTime
   documentUrl  String?
   createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  updatedAt    DateTime
+  user         user     @relation(fields: [userId], references: [id], map: "Insurance_userId_fkey")
+
+  @@index([userId], map: "Insurance_userId_fkey")
 }
 
-model Document {
-  id         Int       @id @default(autoincrement())
-  userId     Int
-  user       User      @relation(fields: [userId], references: [id])
-  name       String
-  type       String
-  expiryDate DateTime?
-  fileUrl    String?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
+model invitation {
+  id        Int             @id @default(autoincrement())
+  email     String
+  role      invitation_role
+  token     String          @unique(map: "Invitation_token_key")
+  status    String          @default("Pending")
+  invitedBy Int
+  createdAt DateTime        @default(now())
+  updatedAt DateTime
+  user      user            @relation(fields: [invitedBy], references: [id], map: "Invitation_invitedBy_fkey")
+
+  @@index([invitedBy], map: "Invitation_invitedBy_fkey")
 }
 
-model Ticket {
-  id             Int      @id @default(autoincrement())
-  userId         Int
-  user           User     @relation(fields: [userId], references: [id])
-  subject        String
-  description    String
-  priority       String   @default("Low")
-  status         String   @default("Open")
-  propertyId     Int?
-  unitId         Int?
-  attachmentUrls String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-}
-
-model Invoice {
-  id             Int       @id @default(autoincrement())
-  invoiceNo      String    @unique
+model invoice {
+  id             Int           @id @default(autoincrement())
+  invoiceNo      String        @unique(map: "Invoice_invoiceNo_key")
   tenantId       Int
-  tenant         User      @relation(fields: [tenantId], references: [id])
   unitId         Int
-  unit           Unit      @relation(fields: [unitId], references: [id])
   month          String
   amount         Decimal
   rent           Decimal
-  serviceFees    Decimal   @default(0.0)
-  totalPaid      Decimal   @default(0.0)
-  status         String    @default("draft")
+  serviceFees    Decimal       @default(0.000000000000000000000000000000)
+  status         String        @default("draft")
   paidAt         DateTime?
-  paymentMethod  String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime
   dueDate        DateTime?
-  idempotencyKey String?   @unique
+  paymentMethod  String?
+  idempotencyKey String?       @unique(map: "Invoice_idempotencyKey_key")
+  totalPaid      Decimal       @default(0.000000000000000000000000000000)
+  user           user          @relation(fields: [tenantId], references: [id], map: "Invoice_tenantId_fkey")
+  unit           unit          @relation(fields: [unitId], references: [id], map: "Invoice_unitId_fkey")
+  transaction    transaction[]
 
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  transactions Transaction[]
+  @@index([tenantId], map: "Invoice_tenantId_fkey")
+  @@index([unitId], map: "Invoice_unitId_fkey")
 }
 
-model MaintenanceTask {
+model lease {
+  id              Int       @id @default(autoincrement())
+  unitId          Int
+  tenantId        Int
+  startDate       DateTime?
+  endDate         DateTime?
+  status          String    @default("Active")
+  monthlyRent     Decimal?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime
+  securityDeposit Decimal?
+  bedroom         String?
+  serviceFees     Decimal?
+  user            user      @relation(fields: [tenantId], references: [id], map: "Lease_tenantId_fkey")
+  unit            unit      @relation(fields: [unitId], references: [id], map: "Lease_unitId_fkey")
+
+  @@index([tenantId], map: "Lease_tenantId_fkey")
+  @@index([unitId], map: "Lease_unitId_fkey")
+}
+
+model maintenancetask {
   id         Int       @id @default(autoincrement())
   name       String
   propertyId Int?
-  property   Property? @relation(fields: [propertyId], references: [id])
   type       String
   frequency  String
   dueDate    DateTime
   vendor     String
   status     String    @default("Upcoming")
   notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime
+  property   property? @relation(fields: [propertyId], references: [id], map: "MaintenanceTask_propertyId_fkey")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([propertyId], map: "MaintenanceTask_propertyId_fkey")
 }
 
-model Transaction {
-  id          Int      @id @default(autoincrement())
-  date        DateTime
-  description String
-  type        String // Income, Expense, Refund
-  amount      Decimal
-  balance     Decimal  @default(0.0)
-  status      String?  @default("Completed")
+model message {
+  id                            Int      @id @default(autoincrement())
+  content                       String   @db.Text
+  senderId                      Int
+  receiverId                    Int
+  isRead                        Boolean  @default(false)
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime
+  user_message_receiverIdTouser user     @relation("message_receiverIdTouser", fields: [receiverId], references: [id], map: "Message_receiverId_fkey")
+  user_message_senderIdTouser   user     @relation("message_senderIdTouser", fields: [senderId], references: [id], map: "Message_senderId_fkey")
 
-  // Relational Accounting
-  invoiceId      Int?
-  invoice        Invoice? @relation(fields: [invoiceId], references: [id])
-  propertyId     Int?
-  ownerId        Int?
-  idempotencyKey String?  @unique
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([receiverId], map: "Message_receiverId_fkey")
+  @@index([senderId], map: "Message_senderId_fkey")
 }
 
-model Communication {
-  id        Int     @id @default(autoincrement())
-  type      String // Email, SMS
-  recipient String // All Tenants, John Doe, etc.
-  subject   String?
-  message   String
-  status    String  @default("Sent")
+model paymentmethod {
+  id         Int      @id @default(autoincrement())
+  userId     Int
+  type       String
+  label      String
+  last4      String?
+  bankName   String?
+  cardHolder String?
+  expiryDate String?
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime
+  user       user     @relation(fields: [userId], references: [id], map: "PaymentMethod_userId_fkey")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([userId], map: "PaymentMethod_userId_fkey")
 }
 
-model Message {
-  id         Int     @id @default(autoincrement())
-  content    String  @db.Text
-  senderId   Int
-  sender     User    @relation("SentMessages", fields: [senderId], references: [id])
-  receiverId Int
-  receiver   User    @relation("ReceivedMessages", fields: [receiverId], references: [id])
-  isRead     Boolean @default(false)
+model property {
+  id              Int               @id @default(autoincrement())
+  name            String
+  address         String
+  status          String            @default("Active")
+  ownerId         Int?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime
+  maintenancetask maintenancetask[]
+  user            user?             @relation(fields: [ownerId], references: [id], map: "Property_ownerId_fkey")
+  unit            unit[]
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  @@index([ownerId], map: "Property_ownerId_fkey")
 }
 
-model SystemSetting {
+model refreshtoken {
   id        Int      @id @default(autoincrement())
-  key       String   @unique
+  token     String   @unique(map: "RefreshToken_token_key")
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      user     @relation(fields: [userId], references: [id], map: "RefreshToken_userId_fkey")
+
+  @@index([userId], map: "RefreshToken_userId_fkey")
+}
+
+model refundadjustment {
+  id        Int      @id @default(autoincrement())
+  requestId String   @unique(map: "RefundAdjustment_requestId_key")
+  type      String
+  reason    String
+  tenantId  Int
+  unitId    Int
+  amount    Decimal
+  date      DateTime
+  status    String   @default("Pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  user      user     @relation(fields: [tenantId], references: [id], map: "RefundAdjustment_tenantId_fkey")
+  unit      unit     @relation(fields: [unitId], references: [id], map: "RefundAdjustment_unitId_fkey")
+
+  @@index([tenantId], map: "RefundAdjustment_tenantId_fkey")
+  @@index([unitId], map: "RefundAdjustment_unitId_fkey")
+}
+
+model systemsetting {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique(map: "SystemSetting_key_key")
   value     String
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
 }
 
-enum TaxStatus {
+model taxes {
+  id        Int          @id @default(autoincrement())
+  name      String
+  rate      Decimal      @default(0.00) @db.Decimal(10, 2)
+  appliesTo String       @default("Rent") @db.VarChar(50)
+  status    taxes_status @default(active)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime
+}
+
+model ticket {
+  id             Int      @id @default(autoincrement())
+  userId         Int
+  subject        String
+  description    String
+  priority       String   @default("Low")
+  status         String   @default("Open")
+  attachmentUrls String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  propertyId     Int?
+  unitId         Int?
+  user           user     @relation(fields: [userId], references: [id], map: "Ticket_userId_fkey")
+
+  @@index([userId], map: "Ticket_userId_fkey")
+}
+
+model transaction {
+  id             Int      @id @default(autoincrement())
+  date           DateTime
+  description    String
+  type           String
+  amount         Decimal
+  balance        Decimal  @default(0.000000000000000000000000000000)
+  status         String?  @default("Completed")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime
+  idempotencyKey String?  @unique(map: "Transaction_idempotencyKey_key")
+  invoiceId      Int?
+  ownerId        Int?
+  propertyId     Int?
+  invoice        invoice? @relation(fields: [invoiceId], references: [id], map: "Transaction_invoiceId_fkey")
+
+  @@index([invoiceId], map: "Transaction_invoiceId_fkey")
+}
+
+model unit {
+  id               Int                @id @default(autoincrement())
+  name             String
+  propertyId       Int
+  status           String             @default("Vacant")
+  bedrooms         Int                @default(1)
+  rentAmount       Decimal            @default(0.000000000000000000000000000000)
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime
+  rentalMode       unit_rentalMode    @default(FULL_UNIT)
+  floor            String?            @default("G")
+  invoice          invoice[]
+  lease            lease[]
+  refundadjustment refundadjustment[]
+  property         property           @relation(fields: [propertyId], references: [id], map: "Unit_propertyId_fkey")
+
+  @@index([propertyId], map: "Unit_propertyId_fkey")
+}
+
+model user {
+  id                               Int                @id @default(autoincrement())
+  email                            String             @unique(map: "User_email_key")
+  password                         String
+  name                             String?
+  role                             user_role          @default(TENANT)
+  phone                            String?
+  type                             String?            @default("Individual")
+  createdAt                        DateTime           @default(now())
+  updatedAt                        DateTime
+  billingdetail                    billingdetail[]
+  document                         document[]
+  insurance                        insurance[]
+  invitation                       invitation[]
+  invoice                          invoice[]
+  lease                            lease[]
+  message_message_receiverIdTouser message[]          @relation("message_receiverIdTouser")
+  message_message_senderIdTouser   message[]          @relation("message_senderIdTouser")
+  paymentmethod                    paymentmethod[]
+  property                         property[]
+  refreshtoken                     refreshtoken[]
+  refundadjustment                 refundadjustment[]
+  ticket                           ticket[]
+  wallet                           wallet?
+}
+
+model wallet {
+  id                Int                 @id @default(autoincrement())
+  userId            Int                 @unique(map: "Wallet_userId_key")
+  balance           Decimal             @default(0.00) @db.Decimal(10, 2)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  user              user                @relation(fields: [userId], references: [id], map: "Wallet_userId_fkey")
+  wallettransaction wallettransaction[]
+}
+
+model wallettransaction {
+  id        Int      @id @default(autoincrement())
+  walletId  Int
+  type      String
+  amount    Decimal  @db.Decimal(10, 2)
+  method    String
+  status    String   @default("SUCCESS")
+  createdAt DateTime @default(now())
+  wallet    wallet   @relation(fields: [walletId], references: [id], map: "WalletTransaction_walletId_fkey")
+
+  @@index([walletId], map: "WalletTransaction_walletId_fkey")
+}
+
+enum invitation_role {
+  ADMIN
+  OWNER
+  TENANT
+}
+
+enum taxes_status {
   active
   inactive
 }
 
-model Tax {
-  id        Int       @id @default(autoincrement())
-  name      String
-  rate      Decimal   @default(0.00) @db.Decimal(10, 2)
-  appliesTo String    @default("Rent") @db.VarChar(50)
-  status    TaxStatus @default(active)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@map("Taxes")
+enum user_role {
+  ADMIN
+  OWNER
+  TENANT
 }
 
-model Account {
-  id             Int      @id @default(autoincrement())
-  accountName    String
-  assetType      String
-  openingBalance Decimal  @default(0.00) @db.Decimal(10, 2)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  @@map("Accounts")
-}
-
-model RefundAdjustment {
-  id        Int      @id @default(autoincrement())
-  requestId String   @unique // RA-001 etc
-  type      String // Refund, Adjustment
-  reason    String
-  tenantId  Int
-  tenant    User     @relation(fields: [tenantId], references: [id])
-  unitId    Int
-  unit      Unit     @relation(fields: [unitId], references: [id])
-  amount    Decimal
-  date      DateTime
-  status    String   @default("Pending") // Completed, Applied, Pending
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model BillingDetail {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  fullName  String
-  address   String
-  city      String
-  state     String
-  country   String
-  method    String? // 'debit', 'credit', 'bank'
-  details   String? // JSON string for extra details
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum unit_rentalMode {
+  FULL_UNIT
+  BEDROOM_WISE
 }
