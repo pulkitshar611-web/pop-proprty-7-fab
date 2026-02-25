@@ -17,5 +17,11 @@ router.get('/properties', ownerController.getOwnerProperties);
 router.get('/financials', ownerController.getOwnerFinancials);
 router.get('/reports', ownerController.getOwnerReports);
 router.get('/reports/download', ownerController.downloadOwnerReport);
+const invitationController = require('../tenant/tenant.invitation.controller');
+router.get('/invitations/sent', invitationController.getSentInvitations);
+router.get('/invitations/received', invitationController.getReceivedInvitations);
+router.post('/invitations', invitationController.createInvitation);
+
+router.post('/invitations/:id/respond', invitationController.respondToInvitation);
 
 module.exports = router;

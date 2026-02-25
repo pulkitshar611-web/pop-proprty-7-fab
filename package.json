@@ -13,6 +13,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@paypal/checkout-server-sdk": "^1.0.3",
     "@prisma/client": "^5.22.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^1.41.3",
@@ -26,7 +27,8 @@
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.11",
+    "pdfkit": "^0.17.2"
   },
   "devDependencies": {
     "prisma": "^5.22.0"

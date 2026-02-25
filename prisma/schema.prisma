@@ -23,7 +23,6 @@ model Invitation {
   inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id])
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("invitation")
 }
 
 model User {
@@ -54,8 +53,6 @@ model User {
   billingDetails    BillingDetail[]
   wallet            Wallet?
   paymentMethods    PaymentMethod[]
-   @@map("user")
-
 }
 
 model PaymentMethod {
@@ -72,8 +69,6 @@ model PaymentMethod {
   
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-   @@map("paymentmethod")
-
 }
 
 model Wallet {
@@ -84,8 +79,6 @@ model Wallet {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   transactions WalletTransaction[]
-   @@map("wallet")
-
 }
 
 model WalletTransaction {
@@ -97,8 +90,6 @@ model WalletTransaction {
   method    String   // DEBIT_CARD, CREDIT_CARD, BANK
   status    String   @default("SUCCESS")
   createdAt DateTime @default(now())
-   @@map("wallettransaction")
-
 }
 
 model RefreshToken {
@@ -108,8 +99,6 @@ model RefreshToken {
   user      User     @relation(fields: [userId], references: [id])
   expiresAt DateTime
   createdAt DateTime @default(now())
-   @@map("refreshtoken")
-
 }
 
 model Property {
@@ -122,9 +111,7 @@ model Property {
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   units            Unit[]
-  maintenanceTasks MaintenanceTask[] 
-  @@map("property")
-
+  maintenanceTasks MaintenanceTask[]
 }
 
 enum RentalMode {
@@ -147,8 +134,6 @@ model Unit {
   leases            Lease[]
   invoices          Invoice[]
   refundAdjustments RefundAdjustment[]
-  @@map("unit")
-
 }
 
 model Lease {
@@ -167,8 +152,6 @@ model Lease {
   securityDeposit Decimal?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  @@map("lease")
-
 }
 
 model Insurance {
@@ -182,8 +165,6 @@ model Insurance {
   documentUrl  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
-  @@map("insurance")
-
 }
 
 model Document {
@@ -196,7 +177,6 @@ model Document {
   fileUrl    String?
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
-   @@map("document")
 }
 
 model Ticket {
@@ -212,8 +192,6 @@ model Ticket {
   attachmentUrls String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
-  @@map("ticket")
-
 }
 
 model Invoice {
@@ -237,8 +215,6 @@ model Invoice {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   transactions Transaction[]
-  @@map("invoice")
-
 }
 
 model MaintenanceTask {
@@ -255,8 +231,6 @@ model MaintenanceTask {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("maintenancetask")
-
 }
 
 model Transaction {
@@ -277,8 +251,6 @@ model Transaction {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("transaction")
-
 }
 
 model Communication {
@@ -291,8 +263,6 @@ model Communication {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("communication")
-
 }
 
 model Message {
@@ -306,8 +276,6 @@ model Message {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("message")
-
 }
 
 model SystemSetting {
@@ -316,8 +284,6 @@ model SystemSetting {
   value     String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("systemsetting")
-
 }
 
 enum TaxStatus {
@@ -333,7 +299,8 @@ model Tax {
   status    TaxStatus @default(active)
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  @@map("taxes")
+
+  @@map("Taxes")
 }
 
 model Account {
@@ -344,7 +311,7 @@ model Account {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  @@map("accounts")
+  @@map("Accounts")
 }
 
 model RefundAdjustment {
@@ -362,8 +329,6 @@ model RefundAdjustment {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("refundadjustment")
-
 }
 
 model BillingDetail {
@@ -379,6 +344,4 @@ model BillingDetail {
   details   String? // JSON string for extra details
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  @@map("billingdetail")
-
 }

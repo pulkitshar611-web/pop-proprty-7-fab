@@ -370,23 +370,76 @@ exports.updateProperty = async (req, res) => {
 };
 
 exports.deleteProperty = async (req, res) => {
+    const { id } = req.params;
+    const propertyId = parseInt(id);
+
+    if (isNaN(propertyId)) {
+        return res.status(400).json({ message: 'Invalid property ID' });
+    }
+
     try {
-        const { id } = req.params;
+        await prisma.$transaction(async (tx) => {
+            // 1. Get all unit IDs to cascade delete their related data
+            const units = await tx.unit.findMany({
+                where: { propertyId },
+                select: { id: true }
+            });
+            const unitIds = units.map(u => u.id);
 
-        // Need to delete related units first (Prisma doesn't auto-cascade unless configured in schema)
-        // Also other relations... for now trying deletion of units then property.
-        await prisma.unit.deleteMany({
-            where: { propertyId: parseInt(id) }
-        });
+            if (unitIds.length > 0) {
+                // Delete Leases linked to these units
+                await tx.lease.deleteMany({
+                    where: { unitId: { in: unitIds } }
+                });
 
-        await prisma.property.delete({
-            where: { id: parseInt(id) }
+                // Delete RefundAdjustments linked to these units
+                await tx.refundAdjustment.deleteMany({
+                    where: { unitId: { in: unitIds } }
+                });
+
+                // Find Invoices to delete their Transactions first
+                const invoices = await tx.invoice.findMany({
+                    where: { unitId: { in: unitIds } },
+                    select: { id: true }
+                });
+                const invoiceIds = invoices.map(i => i.id);
+
+                if (invoiceIds.length > 0) {
+                    // Delete Transactions linked to these invoices
+                    await tx.transaction.deleteMany({
+                        where: { invoiceId: { in: invoiceIds } }
+                    });
+
+                    // Delete Invoices
+                    await tx.invoice.deleteMany({
+                        where: { id: { in: invoiceIds } }
+                    });
+                }
+
+                // Delete Units
+                await tx.unit.deleteMany({
+                    where: { id: { in: unitIds } }
+                });
+            }
+
+            // 2. Delete MaintenanceTasks linked to the property
+            await tx.maintenanceTask.deleteMany({
+                where: { propertyId }
+            });
+
+            // 3. Finally, Delete the Property
+            await tx.property.delete({
+                where: { id: propertyId }
+            });
         });
 
         res.json({ message: 'Property deleted successfully' });
     } catch (error) {
         console.error('Delete Property Error:', error);
-        res.status(500).json({ message: 'Server error' });
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: 'Property not found' });
+        }
+        res.status(500).json({ message: 'Server error deleting property' });
     }
 };
 
@@ -483,14 +536,33 @@ exports.deleteOwner = async (req, res) => {
     try {
         const { id } = req.params;
 
-        // Disconnect properties first
+        const userId = parseInt(id);
+
+        // 1. Delete dependent records that have 'userId' foreign key
+        // Wallet & Transactions
+        const userWallet = await prisma.wallet.findUnique({ where: { userId } });
+        if (userWallet) {
+            await prisma.walletTransaction.deleteMany({ where: { walletId: userWallet.id } });
+            await prisma.wallet.delete({ where: { id: userWallet.id } });
+        }
+
+        // Other direct relations
+        await prisma.billingDetail.deleteMany({ where: { userId } });
+        await prisma.paymentMethod.deleteMany({ where: { userId } });
+        await prisma.document.deleteMany({ where: { userId } });
+        await prisma.insurance.deleteMany({ where: { userId } });
+        await prisma.ticket.deleteMany({ where: { userId } });
+        await prisma.refreshToken.deleteMany({ where: { userId } });
+
+        // 2. Disconnect properties
         await prisma.property.updateMany({
-            where: { ownerId: parseInt(id) },
+            where: { ownerId: userId },
             data: { ownerId: null }
         });
 
+        // 3. Delete the user
         await prisma.user.delete({
-            where: { id: parseInt(id) }
+            where: { id: userId }
         });
 
         res.json({ message: 'Owner deleted' });

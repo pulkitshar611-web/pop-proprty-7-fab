@@ -115,18 +115,26 @@ exports.downloadDocument = async (req, res) => {
             return res.status(403).json({ message: 'Forbidden' });
         }
 
-        // Resolve absolute path
-        // doc.fileUrl stored 'uploads/filename'
-        const filePath = path.join(process.cwd(), doc.fileUrl);
+        // Resolve path robustly
+        let filePath = path.isAbsolute(doc.fileUrl) ? doc.fileUrl : path.join(process.cwd(), doc.fileUrl);
 
+        // Failover: if not found, try searching just the filename in the uploads folder
         if (!fs.existsSync(filePath)) {
-            return res.status(404).json({ message: 'File not found on server' });
+            const fileNameOnly = path.basename(doc.fileUrl);
+            const uploadsFallback = path.join(process.cwd(), 'uploads', fileNameOnly);
+            if (fs.existsSync(uploadsFallback)) {
+                filePath = uploadsFallback;
+            } else {
+                return res.status(404).json({ message: 'File not found on server' });
+            }
         }
 
-        // Send file with Content-Disposition: inline to allow viewing in browser
-        // Frontend uses standard link for download, but window.open for view.
-        // 'inline' attempts to show in browser.
-        res.sendFile(filePath);
+        // Send file with Content-Disposition
+        if (req.query.download === 'true') {
+            res.download(filePath, doc.name);
+        } else {
+            res.sendFile(filePath);
+        }
 
     } catch (e) {
         console.error('Download Error:', e);

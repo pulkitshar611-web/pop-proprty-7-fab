@@ -127,53 +127,80 @@ exports.getOwnerProperties = async (req, res) => {
 // GET /api/owner/financials
 exports.getOwnerFinancials = async (req, res) => {
     try {
-        const ownerId = req.user.id;
+        console.log('getOwnerFinancials called');
+        const ownerId = parseInt(req.user.id);
+        console.log('Owner ID:', ownerId);
+
+        if (isNaN(ownerId)) {
+            console.error('Owner ID is invalid');
+            return res.status(400).json({ message: 'Invalid User ID' });
+        }
+
         const now = new Date();
         const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        console.log('First day of month:', firstDayOfMonth);
 
         // Find properties for this owner
         const properties = await prisma.property.findMany({ where: { ownerId } });
+        console.log('Properties found:', properties.length);
         const propertyIds = properties.map(p => p.id);
+        console.log('Property IDs:', propertyIds);
 
-        // MTD Revenue (Paid in current month - RENT ONLY)
-        const mtdRevenueAgg = await prisma.invoice.aggregate({
-            where: {
-                unit: { propertyId: { in: propertyIds } },
-                status: 'paid',
-                paidAt: { gte: firstDayOfMonth }
-            },
-            _sum: { rent: true }
-        });
-        const mtdRevenue = parseFloat(mtdRevenueAgg._sum.rent || 0);
+        let mtdRevenue = 0;
+        let outstandingDues = 0;
+        let transactions = [];
 
-        // Outstanding Dues (Total unpaid for current owner's properties - RENT ONLY)
-        const duesAgg = await prisma.invoice.aggregate({
-            where: {
-                unit: { propertyId: { in: propertyIds } },
-                status: { not: 'paid' }
-            },
-            _sum: { rent: true }
-        });
-        const outstandingDues = parseFloat(duesAgg._sum.rent || 0);
+        if (propertyIds.length > 0) {
+            // MTD Revenue (Paid in current month - RENT ONLY)
+            const mtdRevenueAgg = await prisma.invoice.aggregate({
+                where: {
+                    unit: { propertyId: { in: propertyIds } },
+                    status: 'paid',
+                    paidAt: { gte: firstDayOfMonth }
+                },
+                _sum: { rent: true }
+            });
+            console.log('MTD Revenue Agg:', mtdRevenueAgg);
+            mtdRevenue = Number(mtdRevenueAgg._sum?.rent || 0);
 
-        // Find recent transactions
-        const invoices = await prisma.invoice.findMany({
-            where: {
-                unit: { propertyId: { in: propertyIds } }
-            },
-            include: { unit: { include: { property: true } } },
-            orderBy: { createdAt: 'desc' },
-            take: 50
-        });
+            // Outstanding Dues (Total unpaid for current owner's properties - RENT ONLY)
+            const duesAgg = await prisma.invoice.aggregate({
+                where: {
+                    unit: { propertyId: { in: propertyIds } },
+                    status: { not: 'paid' }
+                },
+                _sum: { rent: true }
+            });
+            console.log('Dues Agg:', duesAgg);
+            outstandingDues = Number(duesAgg._sum?.rent || 0);
 
-        const transactions = invoices.map(inv => ({
-            id: `INV-${inv.id}`,
-            property: inv.unit.property.name,
-            date: inv.paidAt ? inv.paidAt.toISOString().split('T')[0] : inv.createdAt.toISOString().split('T')[0],
-            type: 'Rent Payment',
-            amount: parseFloat(inv.rent), // RENT ONLY
-            status: inv.status.charAt(0).toUpperCase() + inv.status.slice(1)
-        }));
+            // Find recent transactions
+            const invoices = await prisma.invoice.findMany({
+                where: {
+                    unit: { propertyId: { in: propertyIds } }
+                },
+                include: { unit: { include: { property: true } } },
+                orderBy: { createdAt: 'desc' },
+                take: 50
+            });
+            console.log('Invoices found:', invoices.length);
+
+            transactions = invoices.map(inv => {
+                try {
+                    return {
+                        id: `INV-${inv.id}`,
+                        property: inv.unit?.property?.name || 'Unknown Property',
+                        date: inv.paidAt ? inv.paidAt.toISOString().split('T')[0] : (inv.createdAt ? inv.createdAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0]),
+                        type: 'Rent Payment',
+                        amount: Number(inv.rent || 0), // RENT ONLY
+                        status: inv.status ? (inv.status.charAt(0).toUpperCase() + inv.status.slice(1)) : 'Unknown'
+                    };
+                } catch (err) {
+                    console.error('Error mapping invoice:', inv.id, err);
+                    return null;
+                }
+            }).filter(t => t !== null);
+        }
 
         res.json({
             mtdRevenue,
@@ -182,7 +209,7 @@ exports.getOwnerFinancials = async (req, res) => {
         });
 
     } catch (e) {
-        console.error(e);
+        console.error('Error in getOwnerFinancials:', e);
         res.status(500).json({ message: 'Server error' });
     }
 };
@@ -340,37 +367,26 @@ exports.getOwnerReports = async (req, res) => {
                 title: 'Monthly Performance Summary',
                 description: `Comprehensive view of revenue, occupancy, and expenses for ${currentMonthName}.`,
                 type: 'monthly_summary',
-                lastGenerated: todayStr
+                footerLabel: 'Period',
+                footerValue: `${currentMonthName} ${today.getFullYear()}`
             },
             {
                 title: 'Annual Financial Overview',
                 description: `Year-on-year growth, cumulative earnings, and portfolio valuation trends for ${today.getFullYear()}.`,
                 type: 'annual_overview',
-                lastGenerated: startOfYear
+                footerLabel: 'Fiscal Year',
+                footerValue: `${today.getFullYear()}`
             },
             {
                 title: 'Occupancy & Vacancy Analysis',
                 description: `Unit-by-unit occupancy status and historical vacancy rates across ${properties.length} active sites.`,
                 type: 'occupancy_stats',
-                lastGenerated: todayStr
-            },
-            {
-                title: 'Tax Compliance Statement',
-                description: `Read-only tax summaries and deductible expense records for audit purposes (${today.getFullYear()}).`,
-                type: 'tax_statement',
-                lastGenerated: todayStr
+                footerLabel: 'Status',
+                footerValue: 'Live Data'
             },
         ];
 
-        const stats = [
-            {
-                label: 'Reports Viewable',
-                value: `${totalReportsCount} Total`,
-                sub: monthsDiff > 12 ? 'Lifetime Data' : `${monthsDiff} Active Months`
-            },
-            { label: 'Export Limit', value: 'Full Access', sub: 'PDF / CSV Formats' },
-            { label: 'Data Latency', value: 'Live', sub: `Synced: ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` },
-        ];
+        const stats = [];
 
         res.json({ reports, stats });
     } catch (e) {
@@ -378,9 +394,11 @@ exports.getOwnerReports = async (req, res) => {
         res.status(500).json({ message: 'Failed to fetch owner reports' });
     }
 };
+
 // GET /api/owner/reports/download
 exports.downloadOwnerReport = async (req, res) => {
     try {
+        const PDFDocument = require('pdfkit');
         const ownerId = req.user.id;
         const { type } = req.query;
 
@@ -388,15 +406,75 @@ exports.downloadOwnerReport = async (req, res) => {
         const properties = await prisma.property.findMany({ where: { ownerId } });
         const propertyIds = properties.map(p => p.id);
 
-        let csvContent = '\uFEFF'; // Add BOM for Excel compatibility
-        let fileName = `${type}_report.csv`;
+        const doc = new PDFDocument({ margin: 50, size: 'A4' });
+        let fileName = `${type}_report.pdf`;
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+
+        doc.pipe(res);
+
+        // --- HELPER FUNCTIONS ---
+        const formatCurrency = (amount) => {
+            if (!amount) return '$0.00';
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount);
+        };
+
+        const formatDate = (date) => {
+            if (!date) return '-';
+            return new Date(date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+        };
+
+        const drawTableHeader = (doc, headers, y, colWidths) => {
+            doc.fillColor('#f1f5f9').rect(50, y, 500, 30).fill();
+            doc.fillColor('#334155').font('Helvetica-Bold').fontSize(9);
+            let x = 60; // Left padding in cell
+            headers.forEach((header, i) => {
+                doc.text(header.toUpperCase(), x, y + 10, { width: colWidths[i], align: 'left' });
+                x += colWidths[i];
+            });
+            doc.moveTo(50, y + 30).lineTo(550, y + 30).strokeColor('#cbd5e1').stroke();
+            return y + 30;
+        };
+
+        const drawTableRow = (doc, rowData, y, colWidths, isEven) => {
+            if (isEven) {
+                doc.fillColor('#f8fafc').rect(50, y, 500, 24).fill();
+            }
+            doc.fillColor('#475569').font('Helvetica').fontSize(9);
+            let x = 60;
+            rowData.forEach((data, i) => {
+                doc.text(data || '-', x, y + 7, { width: colWidths[i] - 10, align: 'left', lineBreak: false, ellipsis: true });
+                x += colWidths[i];
+            });
+            doc.moveTo(50, y + 24).lineTo(550, y + 24).strokeColor('#e2e8f0').stroke();
+            return y + 24;
+        };
+
+        // --- HEADER ---
+        doc.rect(0, 0, 600, 100).fillColor('#ffffff').fill(); // White header bg
+        doc.fillColor('#4f46e5').fontSize(22).font('Helvetica-Bold').text('PropOwner', 50, 40);
+        doc.fillColor('#94a3b8').fontSize(9).font('Helvetica-Bold').text('PORTAL ACCESS', 50, 65);
+
+        doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`Generated Report`, 400, 40, { align: 'right', width: 150 });
+        doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold').text(formatDate(new Date()), 400, 55, { align: 'right', width: 150 });
+
+        doc.moveTo(50, 90).lineTo(550, 90).lineWidth(1).strokeColor('#f1f5f9').stroke();
+
+        let currentY = 130;
 
         if (type === 'monthly_summary') {
             const today = new Date();
             const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
             const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
 
-            // Summary Stats
+            // Title
+            doc.fillColor('#0f172a').fontSize(16).font('Helvetica-Bold').text('Monthly Performance Summary', 50, currentY);
+            currentY += 20;
+            doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${formatDate(firstDay)} — ${formatDate(lastDay)}`, 50, currentY);
+            currentY += 40;
+
+            // Summary Metrics Box
             const revenueAgg = await prisma.invoice.aggregate({
                 where: {
                     unit: { propertyId: { in: propertyIds } },
@@ -405,56 +483,82 @@ exports.downloadOwnerReport = async (req, res) => {
                 },
                 _sum: { rent: true }
             });
-            const monthlyRevenue = revenueAgg._sum.rent || 0;
-
+            const monthlyRevenue = parseFloat(revenueAgg._sum.rent || 0);
             const unitCount = await prisma.unit.count({ where: { propertyId: { in: propertyIds } } });
             const occupiedCount = await prisma.unit.count({
-                where: {
-                    propertyId: { in: propertyIds },
-                    status: 'Occupied'
-                }
+                where: { propertyId: { in: propertyIds }, status: 'Occupied' }
+            });
+            const vacancyRate = unitCount > 0 ? ((unitCount - occupiedCount) / unitCount * 100).toFixed(1) : 0;
+
+            const boxY = currentY;
+            doc.roundedRect(50, boxY, 500, 80, 8).fillColor('#f8fafc').fill().strokeColor('#e2e8f0').stroke();
+
+            // Metrics Columns
+            const metrics = [
+                { label: 'Total Properties', value: properties.length.toString() },
+                { label: 'Occupancy Rate', value: `${(100 - vacancyRate).toFixed(1)}%` },
+                { label: 'Monthly Revenue', value: formatCurrency(monthlyRevenue) }
+            ];
+
+            let mx = 80;
+            metrics.forEach(m => {
+                doc.fillColor('#64748b').fontSize(9).font('Helvetica-Bold').text(m.label.toUpperCase(), mx, boxY + 25);
+                doc.fillColor('#0f172a').fontSize(18).font('Helvetica-Bold').text(m.value, mx, boxY + 45);
+                mx += 160;
             });
 
-            csvContent += `Report Type,Monthly Performance Summary\nPeriod,${firstDay.toLocaleDateString()} - ${lastDay.toLocaleDateString()}\nGenerated At,${new Date().toLocaleString()}\n\n`;
-            csvContent += `SUMMARY METRICS\n`;
-            csvContent += `Metric,Value\nTotal Properties,${properties.length}\nTotal Units,${unitCount}\nOccupied Units,${occupiedCount}\nVacancy Rate,${unitCount > 0 ? ((unitCount - occupiedCount) / unitCount * 100).toFixed(1) : 0}%\nMonthly Revenue,${monthlyRevenue}\n\n`;
+            currentY += 110;
 
-            // Detailed Transactions
-            csvContent += `TRANSACTION DETAILS\n`;
-            csvContent += `Date,Invoice No,Unit,Tenant,Amount,Status\n`;
+            // Transactions Table
+            doc.fillColor('#0f172a').fontSize(14).font('Helvetica-Bold').text('Transaction Details', 50, currentY);
+            currentY += 30;
+
+            const headers = ['Date', 'Invoice #', 'Unit', 'Tenant', 'Amount', 'Status'];
+            const colWidths = [70, 130, 50, 100, 80, 70];
+
+            currentY = drawTableHeader(doc, headers, currentY, colWidths);
 
             const invoices = await prisma.invoice.findMany({
-                where: {
-                    unit: { propertyId: { in: propertyIds } },
-                    createdAt: { gte: firstDay, lte: lastDay }
-                },
+                where: { unit: { propertyId: { in: propertyIds } }, createdAt: { gte: firstDay, lte: lastDay } },
                 include: { unit: true, tenant: true },
                 orderBy: { createdAt: 'desc' }
             });
 
-            invoices.forEach(inv => {
-                const dateStr = inv.paidAt ? inv.paidAt.toLocaleDateString() : inv.createdAt.toLocaleDateString();
+            invoices.forEach((inv, i) => {
+                if (currentY > 750) { doc.addPage(); currentY = 50; }
+                const dateStr = inv.paidAt ? formatDate(inv.paidAt) : formatDate(inv.createdAt);
                 const tenantName = inv.tenant ? inv.tenant.name : 'Unknown';
-                csvContent += `${dateStr},${inv.invoiceNo},${inv.unit.name},${tenantName},${inv.rent},${inv.status}\n`;
+                currentY = drawTableRow(doc, [
+                    dateStr,
+                    inv.invoiceNo,
+                    inv.unit.name,
+                    tenantName,
+                    formatCurrency(parseFloat(inv.rent)),
+                    inv.status.charAt(0).toUpperCase() + inv.status.slice(1)
+                ], currentY, colWidths, i % 2 === 0);
             });
 
         } else if (type === 'annual_overview') {
-            csvContent += `Report Type,Annual Financial Overview\nYear,${new Date().getFullYear()}\n\n`;
-            csvContent += "Month,Expected Revenue,Collected Revenue,Dues\n";
+            doc.fillColor('#0f172a').fontSize(16).font('Helvetica-Bold').text('Annual Financial Overview', 50, currentY);
+            currentY += 20;
+            doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`Fiscal Year ${new Date().getFullYear()}`, 50, currentY);
+            currentY += 40;
+
+            const headers = ['Month', 'Expected', 'Collected', 'Outstanding'];
+            const colWidths = [120, 120, 120, 120];
+
+            currentY = drawTableHeader(doc, headers, currentY, colWidths);
 
             const today = new Date();
-            // Show last 12 months logic
             for (let i = 0; i < 12; i++) {
+                if (currentY > 750) { doc.addPage(); currentY = 50; }
                 const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
-                const monthStr = date.toLocaleString('default', { month: 'short', year: 'numeric' });
+                const monthStr = date.toLocaleString('default', { month: 'long', year: 'numeric' });
                 const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
                 const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0);
 
                 const invoices = await prisma.invoice.findMany({
-                    where: {
-                        unit: { propertyId: { in: propertyIds } },
-                        createdAt: { gte: monthStart, lte: monthEnd }
-                    }
+                    where: { unit: { propertyId: { in: propertyIds } }, createdAt: { gte: monthStart, lte: monthEnd } }
                 });
 
                 let expected = 0, collected = 0, dues = 0;
@@ -465,68 +569,151 @@ exports.downloadOwnerReport = async (req, res) => {
                     else dues += rent;
                 });
 
-                csvContent += `${monthStr},${expected},${collected},${dues}\n`;
+                currentY = drawTableRow(doc, [
+                    monthStr,
+                    formatCurrency(expected),
+                    formatCurrency(collected),
+                    formatCurrency(dues)
+                ], currentY, colWidths, i % 2 === 0);
             }
 
         } else if (type === 'occupancy_stats') {
-            csvContent += `Report Type,Occupancy & Vacancy Analysis\nGenerated At,${new Date().toLocaleString()}\n\n`;
-            csvContent += "Property Name,Unit Name,Status,Tenant,Rent Amount,Current Lease End\n";
+            doc.fillColor('#0f172a').fontSize(16).font('Helvetica-Bold').text('Occupancy & Vacancy Analysis', 50, currentY);
+            const unitCount = await prisma.unit.count({ where: { propertyId: { in: propertyIds } } });
+
+            currentY += 20;
+            doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`${unitCount} Total Units  ·  Live Snapshot`, 50, currentY);
+
+            currentY += 40;
+
+            const headers = ['Property', 'Unit', 'Status', 'Tenant', 'Rent', 'Lease End'];
+            // Adjusted widths: Property(120), Unit(60), Status(70), Tenant(110), Rent(70), Lease End(70) => Total 500
+            const colWidths = [120, 60, 70, 110, 70, 70];
+
+            currentY = drawTableHeader(doc, headers, currentY, colWidths);
 
             const units = await prisma.unit.findMany({
                 where: { propertyId: { in: propertyIds } },
                 include: { property: true, leases: { where: { status: 'Active' }, include: { tenant: true } } }
             });
 
-            units.forEach(u => {
+            units.forEach((u, i) => {
+                if (currentY > 750) { doc.addPage(); currentY = 50; }
                 const lease = u.leases[0];
-                const tenantName = lease ? lease.tenant.name : 'N/A';
-                const leaseEnd = lease && lease.endDate ? lease.endDate.toLocaleDateString() : 'N/A';
-                csvContent += `${u.property.name},${u.name},${u.status},${tenantName},${u.rentAmount},${leaseEnd}\n`;
+                const tenantName = lease ? lease.tenant.user?.name || lease.tenant.name : '-';
+                const leaseEnd = lease && lease.endDate ? formatDate(lease.endDate) : '-';
+
+                currentY = drawTableRow(doc, [
+                    u.property.name,
+                    u.name,
+                    u.status,
+                    tenantName,
+                    formatCurrency(parseFloat(u.rentAmount)),
+                    leaseEnd
+                ], currentY, colWidths, i % 2 === 0);
             });
 
-        } else if (type === 'tax_statement') {
+        } else if (type === 'ytd_statement') {
+            doc.fillColor('#0f172a').fontSize(16).font('Helvetica-Bold').text('Year-to-Date Financial Statement', 50, currentY);
+            currentY += 20;
             const year = new Date().getFullYear();
-            csvContent += `Report Type,Tax Compliance Statement\nTax Year,${year}\nNote,This is a preliminary summary. Consult a tax professional.\n\n`;
+            doc.fillColor('#64748b').fontSize(10).font('Helvetica').text(`Fiscal Year: ${year} (Jan 1 - Present)`, 50, currentY);
 
-            // Calculate Total Income for the year
+            // Calculate YTD totals first for a summary box
             const startOfYear = new Date(year, 0, 1);
-            const endOfYear = new Date(year, 11, 31);
+            const today = new Date();
 
-            const incomeAgg = await prisma.invoice.aggregate({
+            const allYtdInvoices = await prisma.invoice.findMany({
                 where: {
                     unit: { propertyId: { in: propertyIds } },
-                    status: 'paid',
-                    paidAt: { gte: startOfYear, lte: endOfYear }
-                },
-                _sum: { rent: true }
+                    createdAt: { gte: startOfYear, lte: today }
+                }
             });
-            const grossIncome = incomeAgg._sum.rent || 0;
 
-            csvContent += `INCOME SUMMARY\n`;
-            csvContent += `Description,Amount\n`;
-            csvContent += `Gross Rental Income,${grossIncome}\n`;
-            csvContent += `Service Fees Collected,0.00\n`;
-            csvContent += `Total Gross Income,${grossIncome}\n\n`;
+            let ytdExpected = 0;
+            let ytdCollected = 0;
+            let ytdOutstanding = 0;
 
-            csvContent += `DEDUCTIBLE EXPENSES\n`;
-            csvContent += `Description,Amount\n`;
-            csvContent += `Property Taxes,0.00 (Not Tracked)\n`;
-            csvContent += `Insurance,0.00 (Not Tracked)\n`;
-            csvContent += `Maintenance,0.00 (Not Tracked)\n\n`;
+            allYtdInvoices.forEach(inv => {
+                const amount = parseFloat(inv.rent);
+                ytdExpected += amount;
+                if (inv.status === 'paid') ytdCollected += amount;
+                else ytdOutstanding += amount;
+            });
 
-            csvContent += `NET TAXABLE INCOME,Check with Accountant\n`;
+            currentY += 40;
+
+            // Draw Summary Box
+            doc.roundedRect(50, currentY, 500, 80, 8).fillColor('#f8fafc').fill().strokeColor('#e2e8f0').stroke();
+
+            // Metrics Columns
+            const metrics = [
+                { label: 'YTD Invoiced', value: formatCurrency(ytdExpected) },
+                { label: 'YTD Collected', value: formatCurrency(ytdCollected) },
+                { label: 'Outstanding', value: formatCurrency(ytdOutstanding) }
+            ];
+
+            let mx = 80;
+            metrics.forEach(m => {
+                doc.fillColor('#64748b').fontSize(9).font('Helvetica-Bold').text(m.label.toUpperCase(), mx, currentY + 25);
+                doc.fillColor('#0f172a').fontSize(18).font('Helvetica-Bold').text(m.value, mx, currentY + 45);
+                mx += 160;
+            });
+
+            currentY += 110;
+
+            doc.fillColor('#0f172a').fontSize(14).font('Helvetica-Bold').text('Monthly Breakdown', 50, currentY);
+            currentY += 30;
+
+            const headers = ['Month', 'Invoiced', 'Collected', 'Outstanding', 'Net Income'];
+            const colWidths = [100, 100, 100, 100, 100];
+
+            currentY = drawTableHeader(doc, headers, currentY, colWidths);
+
+            // Loop through months of current year
+            for (let m = 0; m <= today.getMonth(); m++) {
+                if (currentY > 750) { doc.addPage(); currentY = 50; }
+
+                const monthStart = new Date(year, m, 1);
+                const monthEnd = new Date(year, m + 1, 0);
+                const monthName = monthStart.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+                let minvoiced = 0, mcollected = 0, moutstanding = 0;
+
+                // Filter invoices for this month from the already fetched allYtdInvoices
+                // to avoid multiple db calls in loop
+                const monthInvoices = allYtdInvoices.filter(inv => {
+                    const d = new Date(inv.createdAt);
+                    return d >= monthStart && d <= monthEnd;
+                });
+
+                monthInvoices.forEach(inv => {
+                    const rent = parseFloat(inv.rent);
+                    minvoiced += rent;
+                    if (inv.status === 'paid') mcollected += rent;
+                    else moutstanding += rent;
+                });
+
+                currentY = drawTableRow(doc, [
+                    monthName,
+                    formatCurrency(minvoiced),
+                    formatCurrency(mcollected),
+                    formatCurrency(moutstanding),
+                    formatCurrency(mcollected)
+                ], currentY, colWidths, m % 2 === 0);
+            }
 
         } else {
             return res.status(400).json({ message: 'Invalid report type' });
         }
 
-        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
-        res.send(csvContent);
+        doc.end();
 
     } catch (e) {
         console.error('Download Report Error:', e);
-        res.status(500).json({ message: 'Failed to generate report' });
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Failed to generate report' });
+        }
     }
 };
 // GET /api/owner/notifications
@@ -539,21 +726,29 @@ exports.getNotifications = async (req, res) => {
         const notifications = [];
 
         // 1. Open Tickets (Action Required)
+        // Fetch units for these properties to filter tickets and get names
+        const units = await prisma.unit.findMany({
+            where: { propertyId: { in: propertyIds } },
+            select: { id: true, name: true }
+        });
+        const unitIds = units.map(u => u.id);
+        const unitMap = units.reduce((acc, u) => ({ ...acc, [u.id]: u.name }), {});
+
         const openTickets = await prisma.ticket.findMany({
             where: {
-                unit: { propertyId: { in: propertyIds } },
+                unitId: { in: unitIds },
                 status: 'Open'
             },
-            include: { unit: true },
             orderBy: { createdAt: 'desc' }
         });
 
         openTickets.forEach(t => {
+            const unitName = unitMap[t.unitId] || 'Unknown Unit';
             notifications.push({
                 id: `T-${t.id}`,
                 type: 'alert', // critical
                 title: 'New Maintenance Ticket',
-                message: `Unit ${t.unit.name}: ${t.subject}`,
+                message: `Unit ${unitName}: ${t.subject}`,
                 date: t.createdAt
             });
         });
@@ -597,6 +792,25 @@ exports.getNotifications = async (req, res) => {
                 title: 'Insurance Expired',
                 message: `Policy ${i.policyNumber} has expired. Please renew.`,
                 date: i.endDate // technical date
+            });
+        });
+
+        // 4. Pending Invitations (New)
+        const pendingInvitations = await prisma.invitation.findMany({
+            where: {
+                email: req.user.email,
+                status: 'Pending'
+            },
+            include: { inviter: true }
+        });
+
+        pendingInvitations.forEach(inv => {
+            notifications.push({
+                id: `INV-${inv.id}`,
+                type: 'info',
+                title: 'New Invitation',
+                message: `Invite from ${inv.inviter?.email || 'Unknown'}: Join as ${inv.role}`,
+                date: inv.createdAt
             });
         });
 

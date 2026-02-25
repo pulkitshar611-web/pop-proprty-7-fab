@@ -12,7 +12,11 @@ exports.getLeaseDetails = async (req, res) => {
                 leases: {
                     include: {
                         unit: {
-                            include: { property: true }
+                            include: {
+                                property: {
+                                    include: { owner: true }
+                                }
+                            }
                         }
                     },
                     orderBy: {
@@ -32,6 +36,8 @@ exports.getLeaseDetails = async (req, res) => {
         // Filter for relevant leases in JS if needed, or just take the latest
         const lease = tenant.leases.find(l => ['Active', 'DRAFT', 'Moved'].includes(l.status)) || tenant.leases[0];
 
+        const owner = lease.unit.property.owner;
+
         res.json({
             id: `LEASE-${lease.startDate ? new Date(lease.startDate).getFullYear() : new Date().getFullYear()}-${lease.id}`,
             property: lease.unit.property.name,
@@ -42,6 +48,11 @@ exports.getLeaseDetails = async (req, res) => {
             endDate: lease.endDate,
             status: lease.status,
             deposit: lease.monthlyRent ? parseFloat(lease.monthlyRent) : 0, // Mock assumption
+            supportContact: {
+                name: owner?.name || 'Property Management',
+                email: owner?.email || 'support@rental.com',
+                phone: owner?.phone || 'N/A'
+            }
         });
 
     } catch (e) {

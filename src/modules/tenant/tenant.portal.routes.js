@@ -37,6 +37,8 @@ router.get("/invoices", tenantInvoiceController.getInvoices);
 router.post("/invoices/mock", tenantInvoiceController.createMockInvoice); // Testing Route
 router.get("/payment-config", paymentConfigController.getPaymentConfig);
 router.post("/pay", tenantPaymentController.processPayment);
+router.post("/paypal/create-order", tenantPaymentController.initiatePaypalPayment);
+router.post("/paypal/capture-order", tenantPaymentController.confirmPaypalPayment);
 
 router.get("/insurance", tenantInsuranceController.getInsurance);
 router.post("/insurance", upload.single('policy_document'), tenantInsuranceController.uploadInsurance);
@@ -50,6 +52,12 @@ router.get("/wallet", walletController.getWallet);
 router.post("/wallet/add-funds", walletController.addFunds);
 router.post("/wallet/withdraw", walletController.withdraw);
 router.post("/wallet/transfer", walletController.transfer);
+
+const invitationController = require("./tenant.invitation.controller");
+router.post("/invitations", invitationController.createInvitation);
+router.get("/invitations/sent", invitationController.getSentInvitations);
+router.get("/invitations/received", invitationController.getReceivedInvitations);
+router.get("/invitations/page-data", invitationController.getInvitationPageData);
 
 const paymentMethodController = require("./paymentMethod.controller");
 router.get("/payment-methods", paymentMethodController.getPaymentMethods);

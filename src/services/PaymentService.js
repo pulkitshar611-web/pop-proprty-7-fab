@@ -71,8 +71,15 @@ class PaymentService {
                 provider: 'WALLET'
             };
 
+        } else if (method === 'paypal') {
+            // PayPal already captured in controller, just proceed to record
+            paymentResult = {
+                success: true,
+                transactionId: idempotencyKey.replace('PAYPAL-', ''),
+                provider: 'PAYPAL'
+            };
         } else {
-            // EXTERNAL PROVIDER
+            // EXTERNAL PROVIDER (Stripe/Mock)
             paymentResult = await paymentProvider.charge(totalAmount, 'USD');
             if (!paymentResult.success) {
                 throw new Error('Payment gateway rejected transaction');
@@ -86,9 +93,8 @@ class PaymentService {
         const landlordAccountId = invoice.unit?.property?.ownerId ? `OWNER-${invoice.unit.property.ownerId}` : 'PLATFORM_RESERVE';
 
         // If it was external, we transferred. If wallet, we effectively moved internal credits.
-        // We'll assume paymentProvider.transfer is for external stripes mostly.
-        // If implementing real wallet-to-owner payout, we'd need more logic, but for "Pay Rent" flow V1:
-        if (method !== 'wallet') {
+        // For PayPal unified flow, all funds go to Admin first, so manual transfer is skipped here.
+        if (method !== 'wallet' && method !== 'paypal') {
             await paymentProvider.transfer(totalAmount, rentAmount, platformFee, landlordAccountId);
         }
 
