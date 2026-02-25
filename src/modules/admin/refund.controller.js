@@ -13,6 +13,7 @@ exports.getRefunds = async (req, res) => {
             }
         });
 
+        
         const formatted = refunds.map(r => ({
             id: r.requestId,
             type: r.type,
