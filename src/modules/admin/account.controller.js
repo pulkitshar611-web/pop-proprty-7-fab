@@ -3,22 +3,30 @@ const prisma = require('../../config/prisma');
 // GET /api/admin/accounts
 exports.getAccounts = async (req, res) => {
     try {
-        const accounts = await prisma.account.findMany({
+        console.log('[accounts] GET /api/admin/accounts called');
+
+        // ✅ FIX: Prisma model is named "accounts" (plural) in schema.prisma
+        //    Using prisma.account (singular) causes a runtime TypeError → 500 error
+        const accounts = await prisma.accounts.findMany({
             orderBy: { createdAt: 'desc' }
         });
+
+        console.log(`[accounts] Fetched ${accounts.length} records`);
 
         // Map DB fields to frontend expected fields
         const formatted = accounts.map(acc => ({
             id: acc.id,
             name: acc.accountName,
             type: acc.assetType,
-            balance: acc.openingBalance.toString(), // Convert Decimal to string
+            // ✅ FIX: Safe null-guard before calling .toString() on Decimal
+            balance: acc.openingBalance != null ? acc.openingBalance.toString() : '0',
             createdAt: acc.createdAt
         }));
 
         res.json(formatted);
     } catch (e) {
-        console.error('Error fetching accounts:', e);
+        console.error('[accounts] Error fetching accounts:', e.message);
+        console.error('[accounts] Full error:', e);
         res.status(500).json({ message: 'Error fetching accounts', error: e.message });
     }
 };
@@ -26,10 +34,15 @@ exports.getAccounts = async (req, res) => {
 // POST /api/admin/accounts
 exports.createAccount = async (req, res) => {
     try {
-        // Frontend uses name, type, balance
         const { name, type, balance } = req.body;
+        console.log('[accounts] POST /api/admin/accounts — body:', { name, type, balance });
 
-        const newAccount = await prisma.account.create({
+        if (!name) {
+            return res.status(400).json({ message: 'Account name is required' });
+        }
+
+        // ✅ FIX: Use prisma.accounts (plural) to match schema model name
+        const newAccount = await prisma.accounts.create({
             data: {
                 accountName: name,
                 assetType: type || 'Asset',
@@ -37,9 +50,11 @@ exports.createAccount = async (req, res) => {
             }
         });
 
+        console.log('[accounts] Created account id:', newAccount.id);
         res.status(201).json(newAccount);
     } catch (e) {
-        console.error('Error creating account:', e);
+        console.error('[accounts] Error creating account:', e.message);
+        console.error('[accounts] Full error:', e);
         res.status(500).json({ message: 'Error creating account', error: e.message });
     }
 };
@@ -49,8 +64,10 @@ exports.updateAccount = async (req, res) => {
     try {
         const { id } = req.params;
         const { name, type, balance } = req.body;
+        console.log(`[accounts] PATCH /api/admin/accounts/${id} — body:`, { name, type, balance });
 
-        const updatedAccount = await prisma.account.update({
+        // ✅ FIX: Use prisma.accounts (plural)
+        const updatedAccount = await prisma.accounts.update({
             where: { id: parseInt(id) },
             data: {
                 accountName: name,
@@ -61,7 +78,8 @@ exports.updateAccount = async (req, res) => {
 
         res.json(updatedAccount);
     } catch (e) {
-        console.error('Error updating account:', e);
+        console.error('[accounts] Error updating account:', e.message);
+        console.error('[accounts] Full error:', e);
         res.status(500).json({ message: 'Error updating account', error: e.message });
     }
 };
@@ -70,12 +88,17 @@ exports.updateAccount = async (req, res) => {
 exports.deleteAccount = async (req, res) => {
     try {
         const { id } = req.params;
-        await prisma.account.delete({
+        console.log(`[accounts] DELETE /api/admin/accounts/${id}`);
+
+        // ✅ FIX: Use prisma.accounts (plural)
+        await prisma.accounts.delete({
             where: { id: parseInt(id) }
         });
+
         res.json({ message: 'Account deleted successfully' });
     } catch (e) {
-        console.error('Error deleting account:', e);
-        res.status(500).json({ message: 'Error deleting account' });
+        console.error('[accounts] Error deleting account:', e.message);
+        console.error('[accounts] Full error:', e);
+        res.status(500).json({ message: 'Error deleting account', error: e.message });
     }
 };
