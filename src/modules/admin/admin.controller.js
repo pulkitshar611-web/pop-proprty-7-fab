@@ -393,7 +393,8 @@ exports.deleteProperty = async (req, res) => {
                 });
 
                 // Delete RefundAdjustments linked to these units
-                await tx.refundAdjustment.deleteMany({
+                // ✅ FIX: schema model is "refundadjustment" (all lowercase)
+                await tx.refundadjustment.deleteMany({
                     where: { unitId: { in: unitIds } }
                 });
 
@@ -423,7 +424,8 @@ exports.deleteProperty = async (req, res) => {
             }
 
             // 2. Delete MaintenanceTasks linked to the property
-            await tx.maintenanceTask.deleteMany({
+            // ✅ FIX: schema model is "maintenancetask" (all lowercase)
+            await tx.maintenancetask.deleteMany({
                 where: { propertyId }
             });
 

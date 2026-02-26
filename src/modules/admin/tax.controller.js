@@ -3,7 +3,8 @@ const prisma = require('../../config/prisma');
 // GET /api/admin/taxes
 exports.getTaxes = async (req, res) => {
     try {
-        const taxes = await prisma.tax.findMany({
+        // ✅ FIX: Schema model is "taxes" (plural), not "tax"
+        const taxes = await prisma.taxes.findMany({
             orderBy: { createdAt: 'asc' }
         });
         res.json(taxes);
@@ -20,7 +21,8 @@ exports.updateTaxes = async (req, res) => {
 
         // If it's a single object, create it
         if (!Array.isArray(payload)) {
-            const newTax = await prisma.tax.create({
+            // ✅ FIX: prisma.taxes (plural)
+            const newTax = await prisma.taxes.create({
                 data: {
                     name: payload.name,
                     rate: parseFloat(payload.rate),
@@ -33,9 +35,10 @@ exports.updateTaxes = async (req, res) => {
 
         // If it's an array, perform bulk update (destructive)
         const result = await prisma.$transaction(async (tx) => {
-            await tx.tax.deleteMany();
+            // ✅ FIX: tx.taxes (plural) inside $transaction
+            await tx.taxes.deleteMany();
             if (payload.length > 0) {
-                await tx.tax.createMany({
+                await tx.taxes.createMany({
                     data: payload.map(t => ({
                         name: t.name,
                         rate: parseFloat(t.rate),
@@ -44,7 +47,7 @@ exports.updateTaxes = async (req, res) => {
                     }))
                 });
             }
-            return await tx.tax.findMany({
+            return await tx.taxes.findMany({
                 orderBy: { createdAt: 'asc' }
             });
         });
@@ -66,7 +69,8 @@ exports.deleteTax = async (req, res) => {
             return res.status(400).json({ message: 'Invalid tax ID' });
         }
 
-        await prisma.tax.delete({
+        // ✅ FIX: prisma.taxes (plural)
+        await prisma.taxes.delete({
             where: { id: taxId }
         });
         res.json({ message: 'Tax deleted successfully' });
@@ -87,7 +91,8 @@ exports.updateTax = async (req, res) => {
             return res.status(400).json({ message: 'Invalid tax ID' });
         }
 
-        const updatedTax = await prisma.tax.update({
+        // ✅ FIX: prisma.taxes (plural)
+        const updatedTax = await prisma.taxes.update({
             where: { id: taxId },
             data: {
                 name,
