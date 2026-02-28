@@ -30,7 +30,7 @@ exports.getAccountingSummary = async (req, res) => {
         res.json({
             receivables: parseFloat(receivablesAgg._sum.amount || 0),
             rentIncome: parseFloat(paidInvoicesAgg._sum.rent || 0),
-            serviceFeeIncome: parseFloat(paidInvoicesAgg._sum.serviceFees || 0),
+            platformFeeIncome: parseFloat(paidInvoicesAgg._sum.serviceFees || 0),
             ytdIncome: parseFloat(incomeAgg._sum.amount || 0),
             expenses: Math.abs(parseFloat(expenseAgg._sum.amount || 0))
         });

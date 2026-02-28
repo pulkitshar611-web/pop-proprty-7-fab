@@ -37,11 +37,10 @@ exports.getDashboard = async (req, res) => {
             }
         });
 
-        // Rent Due Status
-        let currentRent = 0;
         let dueStatus = 'No Dues';
         let serviceFee = 'Service Fee: $0.00';
         let subValue = 'All caught up';
+        let rentDetails = null; // New detailed breakdown
 
         if (activeLease) {
             currentRent = parseFloat(activeLease.monthlyRent);
@@ -59,6 +58,18 @@ exports.getDashboard = async (req, res) => {
                 dueStatus = `$${parseFloat(latestInvoice.amount).toLocaleString()}`;
                 serviceFee = `Service Fee: $${parseFloat(latestInvoice.serviceFees).toLocaleString()}`;
                 subValue = latestInvoice.dueDate ? `Due in ${Math.ceil((new Date(latestInvoice.dueDate) - new Date()) / (1000 * 60 * 60 * 24))} days` : 'Due soon';
+
+                // Enhanced breakdown for Dashboard Overview Card
+                rentDetails = {
+                    invoiceId: latestInvoice.id,
+                    month: latestInvoice.month,
+                    rentAmount: parseFloat(latestInvoice.rent),
+                    platformFee: parseFloat(latestInvoice.platformFee),
+                    totalAmount: parseFloat(latestInvoice.amount),
+                    status: latestInvoice.status,
+                    confirmationStatus: latestInvoice.confirmationStatus,
+                    confirmedAt: latestInvoice.confirmedAt
+                };
             }
         }
 
@@ -129,6 +140,7 @@ exports.getDashboard = async (req, res) => {
                     path: '/tenant/insurance'
                 }
             ],
+            rentDetails,
             notifications,
             recentTickets: recentTickets.map(t => ({
                 id: `T-${t.id}`,

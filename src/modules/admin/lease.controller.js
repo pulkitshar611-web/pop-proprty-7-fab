@@ -212,6 +212,7 @@ exports.createLease = async (req, res) => {
 
         // NEW: Auto-create Invoice for the first month if Lease is Active
         if (lease.status === 'Active') {
+            const PLATFORM_FEE = 14.99;
             const monthStr = new Date(startDate).toLocaleString('default', { month: 'long', year: 'numeric' });
 
             const existingInvoice = await prisma.invoice.findFirst({
@@ -226,8 +227,8 @@ exports.createLease = async (req, res) => {
                 const invoiceNo = `INV-${Date.now()}`;
 
                 // Ensure values are from the source of truth (the lease calculation above)
-                // rent, fees are already parsed floats
-                const totalAmount = rent + fees;
+                // PLATFORM_FEE is mandatory and added to rent
+                const totalAmount = rent + PLATFORM_FEE;
 
                 await prisma.invoice.create({
                     data: {
@@ -236,7 +237,7 @@ exports.createLease = async (req, res) => {
                         unitId: uId,
                         month: monthStr,
                         rent: rent,
-                        serviceFees: fees,
+                        serviceFees: PLATFORM_FEE,
                         amount: totalAmount,
                         status: 'Unpaid'
                     }

@@ -453,8 +453,8 @@ exports.downloadOwnerReport = async (req, res) => {
 
         // --- HEADER ---
         doc.rect(0, 0, 600, 100).fillColor('#ffffff').fill(); // White header bg
-        doc.fillColor('#4f46e5').fontSize(22).font('Helvetica-Bold').text('PropOwner', 50, 40);
-        doc.fillColor('#94a3b8').fontSize(9).font('Helvetica-Bold').text('PORTAL ACCESS', 50, 65);
+        doc.fillColor('#4f46e5').fontSize(22).font('Helvetica-Bold').text('MODELLEY', 50, 40);
+        doc.fillColor('#94a3b8').fontSize(9).font('Helvetica-Bold').text('ONLINE RENT PAYMENT FIRM', 50, 65);
 
         doc.fillColor('#64748b').fontSize(9).font('Helvetica').text(`Generated Report`, 400, 40, { align: 'right', width: 150 });
         doc.fillColor('#0f172a').fontSize(10).font('Helvetica-Bold').text(formatDate(new Date()), 400, 55, { align: 'right', width: 150 });

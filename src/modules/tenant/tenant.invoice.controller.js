@@ -28,9 +28,13 @@ exports.getInvoices = async (req, res) => {
                 amount: inv.amount.toString(),
                 rent: inv.rent.toString(),
                 serviceFees: inv.serviceFees ? inv.serviceFees.toString() : '0',
+                platformFee: inv.platformFee ? inv.platformFee.toString() : '0',
                 status: statusDisplay,
+                confirmationStatus: inv.confirmationStatus,
+                confirmedAt: inv.confirmedAt,
                 // Return raw dates for frontend formatting
                 dueDate: inv.dueDate,
+                paidAt: inv.paidAt,
                 createdAt: inv.createdAt,
                 // Derived date for legacy support if needed, but frontend uses dueDate
                 date: inv.dueDate ? new Date(inv.dueDate).toISOString().split('T')[0] : inv.createdAt.toISOString().split('T')[0],
@@ -70,8 +74,9 @@ exports.createMockInvoice = async (req, res) => {
         nextMonth.setMonth(nextMonth.getMonth() + 1);
         const monthStr = nextMonth.toLocaleString('default', { month: 'long', year: 'numeric' });
 
-        // Check if invoice exists for this month to avoid duplicates (optional, but good logic)
-        // For testing "Double", we might want to force it, so we'll append a random string if needed or just let it create.
+        const PLATFORM_FEE = 14.99;
+        const rentAmount = parseFloat(lease.monthlyRent || lease.unit.rentAmount);
+        const totalAmount = rentAmount + PLATFORM_FEE;
 
         const invoice = await prisma.invoice.create({
             data: {
@@ -79,9 +84,9 @@ exports.createMockInvoice = async (req, res) => {
                 tenantId: userId,
                 unitId: lease.unitId,
                 month: monthStr,
-                amount: lease.monthlyRent || lease.unit.rentAmount,
-                rent: lease.monthlyRent || lease.unit.rentAmount,
-                serviceFees: 0,
+                amount: totalAmount,
+                rent: rentAmount,
+                serviceFees: PLATFORM_FEE,
                 dueDate: nextMonth,
                 status: 'pending'
             }
@@ -92,5 +97,38 @@ exports.createMockInvoice = async (req, res) => {
     } catch (e) {
         console.error(e);
         res.status(500).json({ message: 'Failed to create mock invoice' });
+    }
+};
+
+// POST /api/tenant/invoices/:id/confirm
+exports.confirmInvoice = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user.id;
+
+        const invoice = await prisma.invoice.findFirst({
+            where: {
+                id: parseInt(id),
+                tenantId: userId
+            }
+        });
+
+        if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+        if (invoice.status.toLowerCase() !== 'paid') {
+            return res.status(400).json({ message: 'Invoice must be paid before confirmation' });
+        }
+
+        const updated = await prisma.invoice.update({
+            where: { id: parseInt(id) },
+            data: {
+                confirmationStatus: 'Confirmed',
+                confirmedAt: new Date()
+            }
+        });
+
+        res.json({ success: true, message: 'Payment acknowledgement confirmed', invoice: updated });
+    } catch (e) {
+        console.error('Confirm Invoice Error:', e);
+        res.status(500).json({ message: 'Server error' });
     }
 };

@@ -6,7 +6,7 @@ exports.getWallet = async (req, res) => {
         let wallet = await prisma.wallet.findUnique({
             where: { userId },
             include: {
-                transactions: {
+                wallettransactions: {
                     take: 5,
                     orderBy: { createdAt: 'desc' }
                 }
@@ -20,7 +20,7 @@ exports.getWallet = async (req, res) => {
                     balance: 0.00
                 },
                 include: {
-                    transactions: true
+                    wallettransactions: true
                 }
             });
         }
@@ -51,18 +51,18 @@ exports.addFunds = async (req, res) => {
         const updatedWallet = await prisma.wallet.update({
             where: { id: wallet.id },
             data: {
-                balance: { increment: amount },
-                transactions: {
+                balance: { increment: Number(amount) },
+                wallettransactions: {
                     create: {
                         type: 'ADD_FUNDS',
-                        amount: amount,
+                        amount: Number(amount),
                         method: method || 'DEBIT_CARD',
                         status: 'SUCCESS'
                     }
                 }
             },
             include: {
-                transactions: {
+                wallettransactions: {
                     take: 5,
                     orderBy: { createdAt: 'desc' }
                 }
@@ -95,18 +95,18 @@ exports.withdraw = async (req, res) => {
         const updatedWallet = await prisma.wallet.update({
             where: { id: wallet.id },
             data: {
-                balance: { decrement: amount },
-                transactions: {
+                balance: { decrement: Number(amount) },
+                wallettransactions: {
                     create: {
                         type: 'WITHDRAW',
-                        amount: amount,
+                        amount: Number(amount),
                         method: method || 'BANK',
                         status: 'SUCCESS'
                     }
                 }
             },
             include: {
-                transactions: {
+                wallettransactions: {
                     take: 5,
                     orderBy: { createdAt: 'desc' }
                 }
@@ -148,11 +148,11 @@ exports.transfer = async (req, res) => {
             await tx.wallet.update({
                 where: { userId },
                 data: {
-                    balance: { decrement: amount },
-                    transactions: {
+                    balance: { decrement: Number(amount) },
+                    wallettransactions: {
                         create: {
                             type: 'TRANSFER_OUT',
-                            amount: amount,
+                            amount: Number(amount),
                             method: 'WALLET', // sending via wallet
                             status: 'SUCCESS'
                         }
@@ -170,11 +170,11 @@ exports.transfer = async (req, res) => {
             await tx.wallet.update({
                 where: { userId: recipientUser.id },
                 data: {
-                    balance: { increment: amount },
-                    transactions: {
+                    balance: { increment: Number(amount) },
+                    wallettransactions: {
                         create: {
                             type: 'TRANSFER_IN',
-                            amount: amount,
+                            amount: Number(amount),
                             method: 'WALLET',
                             status: 'SUCCESS'
                         }

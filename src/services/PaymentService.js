@@ -32,11 +32,12 @@ class PaymentService {
         });
         if (existingTx) return { success: true, message: 'Duplicate request handled', transactionId: existingTx.id };
 
+        const PLATFORM_FEE = 14.99;
+
         // 3. Calculate Fees
         const rentAmount = parseFloat(invoice.rent);
-        const serviceFees = parseFloat(invoice.serviceFees) || 0;
-        const totalAmount = rentAmount + serviceFees;
-        const platformFee = serviceFees;
+        const totalAmount = rentAmount + PLATFORM_FEE;
+        const platformFee = PLATFORM_FEE;
 
         let paymentResult;
 
@@ -105,7 +106,7 @@ class PaymentService {
             gatewayTxId: paymentResult.transactionId,
             amountPaid: totalAmount,
             rentCovered: rentAmount,
-            serviceFee: serviceFees,
+            serviceFee: PLATFORM_FEE,
             feeTaken: 0
         });
 

@@ -43,7 +43,10 @@ exports.getReports = async (req, res) => {
             }
         });
         const monthlyRentCollected = currentMonthPaidInvoices.reduce((sum, i) => sum + parseFloat(i.rent), 0);
-        const monthlyServiceFeeEarned = currentMonthPaidInvoices.reduce((sum, i) => sum + parseFloat(i.serviceFees || 0), 0);
+        const monthlyPlatformFeeEarned = currentMonthPaidInvoices.reduce((sum, i) => sum + parseFloat(i.serviceFees || 0), 0);
+
+        // Total Platform Fees Collected (All Time)
+        const totalPlatformFeesCollected = paidInvoices.reduce((sum, i) => sum + parseFloat(i.serviceFees || 0), 0);
 
         // Pending Rents (Due in Current Month but NOT Paid)
         const currentMonthPendingInvoices = await prisma.invoice.findMany({
@@ -137,7 +140,8 @@ exports.getReports = async (req, res) => {
             },
             detailed: {
                 monthlyRentCollected,
-                monthlyServiceFeeEarned,
+                monthlyPlatformFeeEarned,
+                totalPlatformFeesCollected,
                 pendingRents,
                 paymentSuccessRate: successRate,
                 paymentFailedRate: failedRate

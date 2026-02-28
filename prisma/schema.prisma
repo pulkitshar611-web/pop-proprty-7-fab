@@ -104,6 +104,9 @@ model invoice {
   paymentMethod  String?
   idempotencyKey String?       @unique(map: "Invoice_idempotencyKey_key")
   totalPaid      Decimal       @default(0.000000000000000000000000000000)
+  platformFee    Decimal       @default(14.99) @db.Decimal(10, 2)
+  confirmationStatus String    @default("Not Confirmed")
+  confirmedAt    DateTime?
   tenant         user          @relation(fields: [tenantId], references: [id], map: "Invoice_tenantId_fkey")
   unit           unit          @relation(fields: [unitId], references: [id], map: "Invoice_unitId_fkey")
   transaction    transaction[]

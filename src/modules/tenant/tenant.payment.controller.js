@@ -53,20 +53,18 @@ exports.initiatePaypalPayment = async (req, res) => {
         if (invoice.tenantId !== userId) return res.status(403).json({ message: 'Unauthorized' });
         if (invoice.status === 'paid') return res.status(400).json({ message: 'Already paid' });
 
+        const PLATFORM_FEE = 14.99;
         const rentAmount = parseFloat(invoice.rent);
-        const currentServiceFees = parseFloat(invoice.serviceFees) || 0;
 
-        // Match the frontend's fixed $14.99 fee logic if not already applied
-        const feeToAdd = (currentServiceFees === 0) ? 14.99 : 0;
-        const totalAmount = rentAmount + currentServiceFees + feeToAdd;
+        // Ensure serviceFees is set to PLATFORM_FEE and amount is updated
+        const totalAmount = rentAmount + PLATFORM_FEE;
 
-        // Optionally update the invoice in DB to reflect the fee we are about to charge
-        if (feeToAdd > 0) {
+        if (parseFloat(invoice.serviceFees) !== PLATFORM_FEE) {
             await prisma.invoice.update({
                 where: { id: invoice.id },
                 data: {
-                    serviceFees: feeToAdd,
-                    amount: rentAmount + feeToAdd
+                    serviceFees: PLATFORM_FEE,
+                    amount: totalAmount
                 }
             });
         }

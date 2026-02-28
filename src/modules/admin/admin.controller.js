@@ -537,39 +537,73 @@ exports.updateOwner = async (req, res) => {
 exports.deleteOwner = async (req, res) => {
     try {
         const { id } = req.params;
-
         const userId = parseInt(id);
 
-        // 1. Delete dependent records that have 'userId' foreign key
-        // Wallet & Transactions
-        const userWallet = await prisma.wallet.findUnique({ where: { userId } });
-        if (userWallet) {
-            await prisma.wallettransaction.deleteMany({ where: { walletId: userWallet.id } });
-            await prisma.wallet.delete({ where: { id: userWallet.id } });
+        if (isNaN(userId)) {
+            return res.status(400).json({ message: 'Invalid owner ID' });
         }
 
-        // Other direct relations
-        await prisma.billingdetail.deleteMany({ where: { userId } });
-        await prisma.paymentmethod.deleteMany({ where: { userId } });
-        await prisma.document.deleteMany({ where: { userId } });
-        await prisma.insurance.deleteMany({ where: { userId } });
-        await prisma.ticket.deleteMany({ where: { userId } });
-        await prisma.refreshtoken.deleteMany({ where: { userId } });
+        await prisma.$transaction(async (tx) => {
+            // 1. Delete dependent records that have 'userId' or related foreign keys
 
-        // 2. Disconnect properties
-        await prisma.property.updateMany({
-            where: { ownerId: userId },
-            data: { ownerId: null }
+            // Wallet & Wallet Transactions
+            const userWallet = await tx.wallet.findUnique({ where: { userId } });
+            if (userWallet) {
+                await tx.wallettransaction.deleteMany({ where: { walletId: userWallet.id } });
+                await tx.wallet.delete({ where: { id: userWallet.id } });
+            }
+
+            // Invitations (Where the user is the inviter)
+            await tx.invitation.deleteMany({ where: { invitedBy: userId } });
+
+            // Messages (Where the user is either sender or receiver)
+            await tx.message.deleteMany({
+                where: {
+                    OR: [
+                        { senderId: userId },
+                        { receiverId: userId }
+                    ]
+                }
+            });
+
+            // Other direct relations
+            await tx.billingdetail.deleteMany({ where: { userId } });
+            await tx.paymentmethod.deleteMany({ where: { userId } });
+            await tx.document.deleteMany({ where: { userId } });
+            await tx.insurance.deleteMany({ where: { userId } });
+            await tx.ticket.deleteMany({ where: { userId } });
+            await tx.refreshtoken.deleteMany({ where: { userId } });
+
+            // Handle relations if the user was ever a tenant (e.g. Invoices, Leases, Refunds)
+            await tx.refundadjustment.deleteMany({ where: { tenantId: userId } });
+            await tx.lease.deleteMany({ where: { tenantId: userId } });
+            // Note: Invoices have dependent transactions, handle if needed. 
+            // Usually OWNERS don't have invoices unless they were previously tenants.
+            const invoices = await tx.invoice.findMany({ where: { tenantId: userId }, select: { id: true } });
+            if (invoices.length > 0) {
+                const invIds = invoices.map(i => i.id);
+                await tx.transaction.deleteMany({ where: { invoiceId: { in: invIds } } });
+                await tx.invoice.deleteMany({ where: { tenantId: userId } });
+            }
+
+            // 2. Disconnect properties
+            await tx.property.updateMany({
+                where: { ownerId: userId },
+                data: { ownerId: null }
+            });
+
+            // 3. Finally, Delete the user
+            await tx.user.delete({
+                where: { id: userId }
+            });
         });
 
-        // 3. Delete the user
-        await prisma.user.delete({
-            where: { id: userId }
-        });
-
-        res.json({ message: 'Owner deleted' });
+        res.json({ message: 'Owner deleted successfully' });
     } catch (error) {
         console.error('Delete Owner Error:', error);
-        res.status(500).json({ message: 'Server error' });
+        if (error.code === 'P2025') {
+            return res.status(404).json({ message: 'Owner not found' });
+        }
+        res.status(500).json({ message: 'Server error deleting owner' });
     }
 };

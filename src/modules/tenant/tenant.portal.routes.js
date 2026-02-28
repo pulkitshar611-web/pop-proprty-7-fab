@@ -34,6 +34,7 @@ router.post("/tickets", tenantTicketController.createTicket);
 const paymentConfigController = require("./payment.config.controller");
 
 router.get("/invoices", tenantInvoiceController.getInvoices);
+router.post("/invoices/:id/confirm", tenantInvoiceController.confirmInvoice);
 router.post("/invoices/mock", tenantInvoiceController.createMockInvoice); // Testing Route
 router.get("/payment-config", paymentConfigController.getPaymentConfig);
 router.post("/pay", tenantPaymentController.processPayment);

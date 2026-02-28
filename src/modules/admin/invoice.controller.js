@@ -1,6 +1,8 @@
 const prisma = require('../../config/prisma');
 const accountingService = require('../../services/AccountingService');
 
+const PLATFORM_FEE = 14.99;
+
 // GET /api/admin/invoices
 exports.getAllInvoices = async (req, res) => {
     try {
@@ -35,12 +37,11 @@ exports.getAllInvoices = async (req, res) => {
 // POST /api/admin/invoices
 exports.createInvoice = async (req, res) => {
     try {
-        const { tenantId, unitId, month, rent, serviceFees } = req.body;
+        const { tenantId, unitId, month, rent } = req.body;
 
         const invoiceNo = `INV-${Math.floor(100 + Math.random() * 900)}-${Date.now().toString().slice(-4)}`;
         const rentVal = parseFloat(rent) || 0;
-        const feesVal = parseFloat(serviceFees) || 0;
-        const total = rentVal + feesVal;
+        const total = rentVal + PLATFORM_FEE;
 
         const invoice = await prisma.invoice.create({
             data: {
@@ -49,7 +50,8 @@ exports.createInvoice = async (req, res) => {
                 unitId: parseInt(unitId),
                 month,
                 rent: rentVal,
-                serviceFees: feesVal,
+                serviceFees: PLATFORM_FEE,
+                platformFee: PLATFORM_FEE,
                 amount: total,
                 status: 'draft'
             },
@@ -67,7 +69,7 @@ exports.createInvoice = async (req, res) => {
 exports.updateInvoice = async (req, res) => {
     try {
         const { id } = req.params;
-        const { rent, serviceFees, status, month } = req.body;
+        const { rent, status, month } = req.body;
 
         const currentInvoice = await prisma.invoice.findUnique({
             where: { id: parseInt(id) },
@@ -76,8 +78,7 @@ exports.updateInvoice = async (req, res) => {
         if (!currentInvoice) return res.status(404).json({ message: 'Invoice not found' });
 
         const rentVal = rent !== undefined ? parseFloat(rent) : parseFloat(currentInvoice.rent);
-        const feesVal = serviceFees !== undefined ? parseFloat(serviceFees) : parseFloat(currentInvoice.serviceFees);
-        const total = rentVal + feesVal;
+        const total = rentVal + PLATFORM_FEE;
 
         // Atomic update and ledger entry
         const result = await prisma.$transaction(async (tx) => {
@@ -85,7 +86,8 @@ exports.updateInvoice = async (req, res) => {
                 where: { id: parseInt(id) },
                 data: {
                     rent: rentVal,
-                    serviceFees: feesVal,
+                    serviceFees: PLATFORM_FEE,
+                    platformFee: PLATFORM_FEE,
                     amount: total,
                     status: status || currentInvoice.status,
                     month: month || currentInvoice.month,
