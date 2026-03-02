@@ -8,7 +8,7 @@ class PaypalProvider {
     constructor() {
         const clientId = process.env.PAYPAL_CLIENT_ID;
         const clientSecret = process.env.PAYPAL_CLIENT_SECRET;
-        const mode = process.env.PAYPAL_MODE || 'sandbox';
+        const mode = process.env.PAYPAL_MODE || 'live';
 
         if (mode === 'live') {
             this.environment = new checkoutNodeJssdk.core.LiveEnvironment(clientId, clientSecret);
